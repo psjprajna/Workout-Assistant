@@ -1,0 +1,15 @@
+# Private data and secrets: never commit
+data/*
+!data/.gitkeep
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+
+# macOS
+.DS_Store

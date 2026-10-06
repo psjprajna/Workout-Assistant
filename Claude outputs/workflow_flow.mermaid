@@ -1,0 +1,41 @@
+flowchart TD
+  classDef code fill:#f3f4f6,stroke:#6b7280,color:#111827
+  classDef jev fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef gen fill:#dbeafe,stroke:#1d4ed8,color:#0b1f4d
+  classDef store fill:#ecfdf5,stroke:#059669,color:#064e3b
+
+  UI[Chainlit / FastAPI]:::code --> HM[handle_message: lock chat, load state]:::code
+  HM --> SS[Safety screen: regex, before any model]:::code
+  SS -->|hit| REF[Refusal: fixed text]:::code
+  SS --> PQ{Pending question?}:::code
+  PQ -->|yes| PR[Parse reply: exact match on options]:::code
+  PR -->|no match| D2[Pick option: Jev Choice over the stored options]:::jev
+  PR --> RS
+  --> RS
+  PQ -->|no| D1[Route: Jev, one batched call of narrow questions: type, safety, which exercise of Qdrant top-k, which date reading]:::jev
+  -->|injury| REF
+  -->|why| EV[(Stored evidence)]:::store
+  -->|known type| RS[Resolve day + exercise: code + Qdrant]:::code
+  -->|form| WEB[Fetch allowlisted page: httpx]:::code
+  -->|other / multi-step| TA[Tool agent: scoped toolset, max 6 calls, parallel]:::gen
+  RS -->|ambiguous| ASK[Ask: store pending question, save]:::code
+  RS --> PL[Fixed plan for the type: §20 groups, gather]:::code
+  PL --> CE[Check evidence: sufficient / missing / conflict]:::code
+  TA -->|ask_user deferred tool| ASK
+  TA -->|tool-call log = evidence| CE
+  CE -->|missing or conflict| ASK
+  CE -->|insufficient after ask| REF
+  CE -->|sufficient| DEC[Decide: rule, evidence record]:::code
+  EV --> TQ
+  DEC --> TQ{Template covers it?}:::code
+  TQ -->|yes| TPL[Template reply]:::code
+  TQ -->|no| D3[Phrase: small model, evidence only]:::gen
+  WEB --> D4[Summarise: small model, labeled]:::gen
+  TPL --> VER[Verify: numbers and names in evidence, web labeled]:::code
+  --> VER
+  --> VER
+  VER -->|fail| TPL2[Template fallback]:::code
+  VER --> OUT[Reply + evidence ids: save state, release lock]:::code
+  TPL2 --> OUT
+  ASK --> OUT
+  REF --> OUT

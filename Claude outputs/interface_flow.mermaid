@@ -1,0 +1,41 @@
+flowchart LR
+  classDef pai fill:#dbeafe,stroke:#1d4ed8,color:#0b1f4d
+  classDef code fill:#f3f4f6,stroke:#6b7280,color:#111827
+  classDef ext fill:#ecfdf5,stroke:#059669,color:#064e3b
+
+  subgraph IF[Interface layer]
+    CH[Chainlit UI]:::code --> FA[FastAPI route]:::code --> HM["handle_message(session_id, text)"]:::code
+    HM --> WF["DBOS workflow per chat: send / recv, serial per chat, durable pending question"]:::ext
+  end
+  subgraph WK[Workflow stages: plain async, hand-written]
+    ST[Safety, Resolve, Plan, Retrieve, Check, Decide, Verify]:::code
+    GW["gateway(agent, prompt, deps) -> Out | ModelFailure"]:::code
+  end
+  subgraph AG[Pydantic AI objects]
+    A1["route_agent = Agent('typesafe:jev-latest', output_type=Route); thresholds in ModelSettings"]:::pai
+    A2["pick_agent = Agent('typesafe:jev-latest', output_type=Pick[per-request Literal])"]:::pai
+    A3["phrase_agent = Agent(small, output_type=NativeOutput(Reply), deps_type=Evidence)"]:::pai
+    A4["summary_agent = Agent(small, output_type=NativeOutput(FormCues))"]:::pai
+    A5["tool_agent = Agent(small, toolsets=[scoped], output_type=Evidence | AskUser, deps_type=Deps)"]:::pai
+    TS["FunctionToolset per question type; WrapperToolset logs every call into the evidence record; ask_user is a deferred tool; UsageLimits(request_limit=6)"]:::pai
+    MS["ModelSettings(timeout), ConcurrencyLimitedModel, retries=2, history_processors (20 turns)"]:::pai
+  end
+  subgraph PV[Providers]
+    OR[OpenRouter chat completions: small model]:::ext
+    TS2[TypeSafeProvider: Jev, TYPESAFE_API_KEY]:::ext
+  end
+  subgraph DT[Data: hand-written repositories]
+    RP[asyncpg, Qdrant, httpx allowlist]:::code
+  end
+  subgraph TE[Tests and evals]
+    FM["Agent.override(model=FunctionModel); ALLOW_MODEL_REQUESTS = False"]:::pai
+    LF["Agent.instrument_all() -> OTel -> Langfuse; run_experiment + code evaluators; propagate_attributes(session_id)"]:::ext
+  end
+  WF --> ST --> GW
+  GW --> A1 & A2 & A3 & A4 & A5
+  A5 --> TS --> RP
+  ST --> RP
+  A1 & A2 --> MS --> TS2
+  A3 & A4 & A5 --> MS --> OR
+  FM -.-> A1 & A2 & A3 & A4 & A5
+  A1 & A2 & A3 & A4 & A5 -.-> LF
