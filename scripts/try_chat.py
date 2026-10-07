@@ -1,26 +1,10 @@
 import asyncio
-import re
 
 import asyncpg
 
 from workout_agent.settings import Settings
-from workout_agent.workflow.chat import RouteDecision, Session, handle_message
-
-
-async def simple_route(text: str, has_pending: bool) -> RouteDecision:
-    """A crude stand-in for the model, just so we can chat today."""
-    cleaned = text.strip().lower()
-
-    # A bare number while a question is pending means "I pick that option".
-    if has_pending and cleaned.isdigit():
-        return RouteDecision(intent="pick_option", option_number=int(cleaned))
-
-    # "last time I did bench press?" -> exercise text is "bench press"
-    match = re.search(r"last time (?:i )?(?:did|do)\s+(.+?)\s*\??$", cleaned)
-    if match:
-        return RouteDecision(intent="last_session", exercise_text=match.group(1))
-
-    return RouteDecision(intent="unknown")
+from workout_agent.workflow.chat import Session, handle_message
+from workout_agent.workflow.simple_router import simple_route
 
 
 async def main() -> None:
