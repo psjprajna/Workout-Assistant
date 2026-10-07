@@ -33,7 +33,10 @@ class LoadPlan:
     errors: list[str] = field(default_factory=list)
 
 
-def build_plan(logs: list[ExerciseLog], timed_exercise_ids: frozenset[int] = frozenset()) -> LoadPlan:
+def build_plan(
+    logs: list[ExerciseLog],
+    timed_exercise_ids: frozenset[int] = frozenset(),
+) -> LoadPlan:
 
     
     """
