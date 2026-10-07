@@ -21,6 +21,7 @@ class ExerciseLog(BaseModel):
     date: Date = Field(alias="mydate")
     exercise_id: int = Field(alias="eid")
     exercise_name: str = Field(alias="ename")
+    logs: str = ""
 
 
 class SetLog(BaseModel):
