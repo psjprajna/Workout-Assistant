@@ -33,7 +33,7 @@ class LoadPlan:
     errors: list[str] = field(default_factory=list)
 
 
-def build_plan(logs: list[ExerciseLog]) -> LoadPlan:
+def build_plan(logs: list[ExerciseLog], timed_exercise_ids: frozenset[int] = frozenset()) -> LoadPlan:
 
     
     """
@@ -52,6 +52,9 @@ def build_plan(logs: list[ExerciseLog]) -> LoadPlan:
         )
         plan.logs.append(log_row)
         plan.exercises.setdefault(log.exercise_id, log.exercise_name)
+
+        if log.exercise_id in timed_exercise_ids:
+            continue  # duration logs: keep the log, skip the sets
 
         try:
             # Parse raw sets text into a list of (weight, reps) tuples
