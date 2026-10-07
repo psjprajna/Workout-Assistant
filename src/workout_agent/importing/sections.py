@@ -1,5 +1,6 @@
 import re
 
+
 def split_sections(text: str) -> dict[str, str]:
     """
     Splits a plain text file into sections based on specific header and footer markers.

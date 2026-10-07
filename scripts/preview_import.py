@@ -23,8 +23,14 @@ def main(path: str) -> None:
     print(f"\nset logs: {len(sets.rows)} parsed, {len(sets.errors)} errors")
     weighted = [row for row in sets.rows if row.weight_lbs]
     for row in weighted[:10]:
-        print(" ", f"log {row.exercise_log_id}", f"set {row.set_index}", row.weight_lbs, "x", row.reps)
-
+        print(
+            " ",
+            f"log {row.exercise_log_id}",
+            f"set {row.set_index}",
+            row.weight_lbs,
+            "x",
+            row.reps,
+        )
     for error in (logs.errors + sets.errors)[:10]:
         print("ERROR", error)
 

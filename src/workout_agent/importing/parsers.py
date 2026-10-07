@@ -9,11 +9,9 @@ import csv
 import io
 from dataclasses import dataclass, field
 from datetime import date as Date
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class ExerciseLog(BaseModel):
@@ -44,10 +42,9 @@ class SetLog(BaseModel):
 
 
 @dataclass
-class ParseResult(Generic[T]):
+class ParseResult[T]:
     rows: list[T] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
-
 
 def _describe(row_number: int, exc: ValidationError) -> str:
     problems = [
@@ -57,7 +54,7 @@ def _describe(row_number: int, exc: ValidationError) -> str:
     return f"row {row_number}: " + "; ".join(problems)
 
 
-def _parse(csv_text: str, model: type[T]) -> ParseResult[T]:
+def _parse[T: BaseModel](csv_text: str, model: type[T]) -> ParseResult[T]:
     result: ParseResult[T] = ParseResult()
     for row_number, row in enumerate(csv.DictReader(io.StringIO(csv_text)), start=1):
         try:
