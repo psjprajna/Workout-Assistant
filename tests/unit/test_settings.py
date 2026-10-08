@@ -1,3 +1,5 @@
+"""Unit tests: Settings defaults, env overrides, and keys staying hidden in repr."""
+
 from workout_agent.settings import Settings
 
 

@@ -11,6 +11,8 @@ from decimal import Decimal
 from workout_agent.tools.find_exercise import FindResult
 from workout_agent.tools.get_last_session import LastSessionResult
 
+# --- Templates: each reply is built from tool-result fields, never from model text ---
+
 
 def format_date(d: date) -> str:
     """8 Feb 2026. Built by hand so the day has no leading zero."""
@@ -49,6 +51,9 @@ def format_find_question(result: FindResult, query: str) -> str:
 
     # status "ok" means the exercise is known, so there is nothing to ask.
     raise ValueError("format_find_question called with an 'ok' result")
+
+
+# --- Verification: prove a reply contains no number that is not in the data ---
 
 
 def _allowed_numbers(result: LastSessionResult) -> set[Decimal]:

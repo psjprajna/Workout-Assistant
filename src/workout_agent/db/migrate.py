@@ -1,3 +1,9 @@
+"""Apply the SQL files in migrations/ to the database, in filename order.
+
+Every migration uses CREATE ... IF NOT EXISTS, so running this repeatedly is safe.
+Each file applied is logged so you can see what ran.
+"""
+
 import logging
 from pathlib import Path
 

@@ -1,3 +1,5 @@
+"""Unit tests: CSV section text becomes typed rows; bad rows are reported, not fatal."""
+
 from datetime import date
 from pathlib import Path
 

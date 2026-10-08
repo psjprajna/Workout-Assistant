@@ -1,3 +1,5 @@
+"""Integration tests: load_plan writes to Postgres and loading twice adds no duplicates."""
+
 from workout_agent.importing.loader import build_plan, load_plan
 from workout_agent.importing.parsers import ExerciseLog
 

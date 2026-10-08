@@ -1,3 +1,5 @@
+"""Integration tests: get_last_session returns the newest log's sets in order."""
+
 from datetime import date
 from decimal import Decimal
 

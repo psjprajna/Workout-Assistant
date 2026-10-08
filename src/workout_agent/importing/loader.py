@@ -1,5 +1,8 @@
-"""
-Turn parsed Jefit rows into a LoadPlan and insert it into Postgres.
+"""Turn parsed Jefit rows into a LoadPlan, then insert the plan into Postgres.
+
+build_plan is pure (no database): it cleans names, parses sets, converts to kg and
+collects errors. load_plan writes the plan in one transaction and is safe to run twice
+(ON CONFLICT DO NOTHING). Splitting plan from load makes the logic testable without a DB.
 """
 
 from dataclasses import dataclass, field
@@ -9,6 +12,7 @@ from .parsers import ExerciseLog
 from .sets import parse_logged_sets, weight_in_kg
 
 
+# One row for the exercise_logs table: a single exercise done on a single day.
 @dataclass
 class LogRow:
     exercise_log_id: int
@@ -16,6 +20,7 @@ class LogRow:
     performed_on: date
 
 
+# One row for the sets table. weight_kg is what we show; weight_raw is Jefit's original number.
 @dataclass
 class SetRow:
     exercise_log_id: int
@@ -25,6 +30,7 @@ class SetRow:
     reps: int
 
 
+# Everything we intend to insert, plus the logs we could not read (errors).
 @dataclass
 class LoadPlan:
     exercises: dict[int, str] = field(default_factory=dict)
@@ -90,6 +96,7 @@ async def load_plan(conn, plan: LoadPlan) -> None:
 
 
     """Insert a LoadPlan in one transaction. Safe to run twice."""
+    # Shape the plan into plain tuples, one per row, in the column order of the SQL below.
     exercise_rows = list(plan.exercises.items())
 
     log_rows = [
@@ -102,6 +109,7 @@ async def load_plan(conn, plan: LoadPlan) -> None:
         for s in plan.sets
     ]
 
+    # One transaction: either all three tables are filled, or none are.
     async with conn.transaction():
         await conn.executemany(
             """

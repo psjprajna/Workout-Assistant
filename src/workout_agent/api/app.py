@@ -1,4 +1,8 @@
-"""The HTTP API: POST /chat takes a session id and a message, returns the reply."""
+"""The HTTP API (FastAPI): POST /chat takes a session id and a message, returns the reply.
+
+create_app wires up a database connection pool, one in-memory Session per session id,
+and the router to use. GET /health is a simple "is it running" check.
+"""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

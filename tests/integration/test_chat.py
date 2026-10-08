@@ -1,3 +1,5 @@
+"""Integration tests: handle_message end to end (ask, pick an option, verify) with a fake router."""
+
 from datetime import date
 from decimal import Decimal
 

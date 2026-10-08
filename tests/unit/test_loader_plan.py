@@ -1,3 +1,5 @@
+"""Unit tests: build_plan (kg conversion, set numbers, name cleaning, timed exercises)."""
+
 from workout_agent.importing.loader import build_plan
 from workout_agent.importing.parsers import ExerciseLog
 

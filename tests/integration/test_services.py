@@ -1,3 +1,5 @@
+"""Integration tests: Postgres and Qdrant from docker compose are reachable."""
+
 import asyncpg
 import httpx
 

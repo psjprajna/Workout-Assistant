@@ -1,3 +1,5 @@
+"""Integration tests: find_exercise returns ok / ambiguous / no_rows against a real database."""
+
 from workout_agent.tools.find_exercise import find_exercise
 
 

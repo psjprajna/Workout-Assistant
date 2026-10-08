@@ -1,3 +1,5 @@
+"""Unit tests: split_sections finds each section and strips the ### markers."""
+
 import csv
 import io
 from pathlib import Path

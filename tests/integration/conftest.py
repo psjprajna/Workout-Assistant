@@ -1,3 +1,10 @@
+"""Shared fixtures for integration tests (they need Postgres running).
+
+conn   - a connection to the separate workout_test database, migrated and emptied.
+seeded - conn plus two bench presses with one set each.
+This keeps tests away from your real workout data.
+"""
+
 from datetime import date
 from decimal import Decimal
 
@@ -19,6 +26,7 @@ def test_database_url() -> str:
     return _with_database(Settings().database_url, TEST_DB)
 
 
+# Fixtures are set-up helpers: a test that lists one as an argument receives its value.
 @pytest.fixture
 async def conn():
     """A connection to the test database, migrated and empty."""

@@ -1,3 +1,9 @@
+"""Chat with the bot in the terminal (no web server needed).
+
+Usage: uv run python scripts/try_chat.py
+Uses the same handle_message as the API, so what you see here is what /chat does.
+"""
+
 import asyncio
 
 import asyncpg

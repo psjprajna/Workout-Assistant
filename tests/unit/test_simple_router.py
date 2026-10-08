@@ -1,3 +1,5 @@
+"""Unit tests: the rule-based router's decisions for typical messages."""
+
 from workout_agent.workflow.simple_router import simple_route
 
 

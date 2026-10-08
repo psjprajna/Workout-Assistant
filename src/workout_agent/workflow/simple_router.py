@@ -1,4 +1,8 @@
-"""A rule-based router: a stand-in for the model, and a baseline to compare it with."""
+"""A rule-based router: decides what a message means using regexes, no model.
+
+It is the stand-in for the AI router and a baseline to compare the model against.
+It only returns a RouteDecision; it never looks at the database or writes a reply.
+"""
 
 import re
 

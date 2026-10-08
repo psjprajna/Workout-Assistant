@@ -1,3 +1,5 @@
+"""Integration tests: migrations create the tables and can run twice."""
+
 from workout_agent.db.migrate import apply_migrations
 
 

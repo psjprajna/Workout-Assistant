@@ -1,3 +1,9 @@
+"""Run a scripted conversation against the running API and print the replies.
+
+Usage: start the server first, then: uv run python scripts/ask_questions.py
+Covers the main cases: pick from a list, unknown exercise, no set details, a bad pick.
+"""
+
 import httpx
 
 URL = "http://127.0.0.1:8000/chat"

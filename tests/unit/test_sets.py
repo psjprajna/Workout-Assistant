@@ -1,3 +1,5 @@
+"""Unit tests: parsing 'weightxreps' text and the lbs-to-kg date rule."""
+
 from datetime import date
 
 import pytest

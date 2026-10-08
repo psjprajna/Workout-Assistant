@@ -1,3 +1,5 @@
+"""Integration tests: POST /chat and GET /health through the real FastAPI app."""
+
 import httpx
 import pytest
 

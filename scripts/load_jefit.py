@@ -1,3 +1,10 @@
+"""Load a Jefit export into Postgres.
+
+Usage: uv run python scripts/load_jefit.py data/<your-file>.csv
+Reads the file, parses exercise logs, builds a LoadPlan, applies migrations, inserts
+the plan, and prints counts so you can check the database matches the plan.
+"""
+
 import asyncio
 import logging
 import sys

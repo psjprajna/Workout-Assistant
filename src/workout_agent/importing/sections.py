@@ -1,3 +1,10 @@
+"""Split a Jefit export into its named sections.
+
+A Jefit CSV is several tables in one file. Each starts with a '### NAME ####' line and
+ends with a line made only of '#'. split_sections returns {section name: body text}, so
+the parsers can read each table on its own.
+"""
+
 import re
 
 

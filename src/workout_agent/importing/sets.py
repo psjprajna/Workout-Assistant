@@ -1,5 +1,13 @@
+"""Read the logged-sets text ("80x8,80x7") and convert weights to kg.
+
+Jefit stores a whole workout's sets in one string. This module turns that string into
+(weight, reps) pairs, drops empty "0x0" placeholders, and converts old lbs weights to kg.
+Logs before 2026-01-01 were entered in lbs; later ones are already kg.
+"""
+
 from datetime import date
 
+# Logs before this date were typed in lbs; this date and later are already kg.
 # Cutoff date for weight conversion rules
 KG_CONVERSION_CUTOFF_DATE = date(2026, 1, 1)
 
