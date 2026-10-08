@@ -49,3 +49,8 @@ def test_log_with_only_placeholder_sets_is_kept_with_no_sets():
     plan = build_plan([make_log(1, "2026-02-01", "0x0,0x0")])
     assert len(plan.logs) == 1
     assert plan.sets == []
+
+def test_exercise_names_have_extra_spaces_removed():
+    log = make_log(1, "2026-02-01", "80x8", eid=294, name="  Barbell  Ab Rollout ")
+    plan = build_plan([log])
+    assert plan.exercises == {294: "Barbell Ab Rollout"}

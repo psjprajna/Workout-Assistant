@@ -24,6 +24,7 @@ packages = ["src/workout_agent"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["llm: tests that call a real language model (need an API key)"]
 
 [tool.ruff]
 line-length = 100

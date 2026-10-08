@@ -32,6 +32,9 @@ class LoadPlan:
     sets: list[SetRow] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
+def _clean_name(name: str) -> str:
+    """Remove leading, trailing and doubled spaces."""
+    return " ".join(name.split())
 
 def build_plan(
     logs: list[ExerciseLog],
@@ -54,7 +57,7 @@ def build_plan(
             performed_on=log.date,
         )
         plan.logs.append(log_row)
-        plan.exercises.setdefault(log.exercise_id, log.exercise_name)
+        plan.exercises.setdefault(log.exercise_id, _clean_name(log.exercise_name))
 
         if log.exercise_id in timed_exercise_ids:
             continue  # duration logs: keep the log, skip the sets
