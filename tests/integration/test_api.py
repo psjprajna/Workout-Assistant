@@ -53,3 +53,19 @@ async def test_empty_message_is_rejected(client):
 async def test_missing_session_id_is_rejected(client):
     r = await client.post("/chat", json={"message": "hi"})
     assert r.status_code == 422
+
+@pytest.mark.llm
+async def test_chat_with_real_agent_remembers_the_question(seeded, test_database_url):
+    from workout_agent.agents.workout_agent import build_agent
+    from workout_agent.settings import Settings
+
+    app = create_app(route=simple_route, database_url=test_database_url,
+                     agent=build_agent(Settings()))
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            first = await _chat(c, "s1", "last time I did bench press?")
+            assert "incline" in first.json()["reply"].lower()  # it asks which one
+
+            second = await _chat(c, "s1", "the incline one")
+            assert "60" in second.json()["reply"]  # incline's seeded weight

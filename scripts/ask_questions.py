@@ -23,7 +23,7 @@ SCRIPT = [
 
 
 def main() -> None:
-    with httpx.Client(timeout=10) as client:
+    with httpx.Client(timeout=60) as client:
         for session_id, message in SCRIPT:
             response = client.post(URL, json={"session_id": session_id, "message": message})
             reply = response.json()["reply"] if response.status_code == 200 else response.text

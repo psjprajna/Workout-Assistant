@@ -90,3 +90,18 @@ async def test_ambiguous_exercise_asks_which_one(conn):
     # Two bench presses match, so it should name them and ask, not pick one.
     assert "incline" in reply.lower()
     assert "?" in reply
+
+
+async def test_picking_a_number_chooses_that_option(conn):
+    await _seed(conn)
+    agent = agent_module.build_agent(Settings())
+    deps = agent_module.AgentDeps(conn=conn, evidence=[])
+    first = await agent.run("last time I did bench press?", deps=deps)
+
+    # The tool returned the options in this order; "2" must mean the second one.
+    second_name = deps.evidence[0]["matches"][1]["name"]
+    deps2 = agent_module.AgentDeps(conn=conn, evidence=[])
+    second = await agent.run("2", deps=deps2, message_history=first.all_messages())
+
+    assert second_name in second.output
+    assert "1." in first.output  # the options were shown as a numbered list

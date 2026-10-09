@@ -26,6 +26,10 @@ INSTRUCTIONS = (
     "If find_exercise returns 'ambiguous', list the exact options and ask which one. "
     "If a tool returns 'no_rows', say that item is not in the data. "
     "Keep answers to a couple of short lines."
+    "When find_exercise returns 'ambiguous', show the options as a numbered list "
+    "(1., 2., 3., ...) in exactly the order the tool returned them. "
+    "If the user then replies with a number, that number is the position in that list; "
+    "call get_last_session with that option's exercise_id. "
 )
 
 
