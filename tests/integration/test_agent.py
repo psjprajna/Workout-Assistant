@@ -12,10 +12,17 @@ file exists the whole module is skipped, so the rest of the suite stays green.
 import re
 from datetime import date
 from decimal import Decimal
+from functools import partial
 
 import pytest
+from qdrant_client import AsyncQdrantClient
 
+from workout_agent.embeddings.index import index_exercises
+from workout_agent.embeddings.openrouter import embed
+from workout_agent.embeddings.search import search_exercises
 from workout_agent.settings import Settings
+
+SEARCH_COLLECTION = "exercises_agent_test"
 
 # Skip (not fail) while the agent module has not been written yet.
 agent_module = pytest.importorskip("workout_agent.agents.workout_agent")
@@ -105,3 +112,38 @@ async def test_picking_a_number_chooses_that_option(conn):
 
     assert second_name in second.output
     assert "1." in first.output  # the options were shown as a numbered list
+
+
+async def _real_embedder(texts: list[str]) -> list[list[float]]:
+    return await embed(Settings(), texts)
+
+
+@pytest.fixture
+async def search(conn):
+    """The _seed exercises indexed with the real embedder; yields a bound search_exercises."""
+    await _seed(conn)
+    qdrant = AsyncQdrantClient(url=Settings().qdrant_url)
+    await qdrant.delete_collection(SEARCH_COLLECTION)
+    try:
+        await index_exercises(conn, qdrant, _real_embedder, SEARCH_COLLECTION)
+        yield partial(
+            search_exercises, qdrant, _real_embedder, collection=SEARCH_COLLECTION
+        )
+    finally:
+        await qdrant.delete_collection(SEARCH_COLLECTION)
+        await qdrant.close()
+
+
+async def test_meaning_match_offers_bench_press(conn, search):
+    deps = agent_module.AgentDeps(conn=conn, evidence=[], search=search)
+    agent = agent_module.build_agent(Settings())
+    result = await agent.run("what did I do last time for chest press?", deps=deps)
+
+    # No name contains "chest", so the match comes from meaning, offered as a question.
+    first = deps.evidence[0]
+    assert first["status"] == "ambiguous"
+    assert 2 in [m["exercise_id"] for m in first["matches"]]
+    assert "Barbell Bench Press" in result.output
+    assert "?" in result.output
+    # It offered the options; it did not pick one and answer.
+    assert all("sets" not in e for e in deps.evidence)

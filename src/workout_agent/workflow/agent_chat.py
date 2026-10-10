@@ -11,6 +11,7 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 
 from workout_agent.agents.workout_agent import AgentDeps
+from workout_agent.tools.find_exercise import Searcher
 
 
 @dataclass
@@ -23,8 +24,9 @@ async def handle_agent_message(
     session: AgentSession,
     text: str,
     agent: Agent[AgentDeps, str],
+    search: Searcher | None = None,
 ) -> str:
-    deps = AgentDeps(conn=conn)  # fresh evidence list for each question
+    deps = AgentDeps(conn=conn, search=search)  # fresh evidence list for each question
     result = await agent.run(text, deps=deps, message_history=session.history)
     # all_messages() already includes the old history, so replace it, don't extend it.
     session.history = result.all_messages()

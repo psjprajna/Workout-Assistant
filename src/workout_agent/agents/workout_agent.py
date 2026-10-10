@@ -14,7 +14,7 @@ from pydantic_ai.models.openrouter import OpenRouterModel, OpenRouterModelSettin
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from workout_agent.settings import Settings
-from workout_agent.tools.find_exercise import find_exercise
+from workout_agent.tools.find_exercise import Searcher, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
 
 MODEL_NAME = "qwen/qwen3.5-35b-a3b"
@@ -30,6 +30,8 @@ INSTRUCTIONS = (
     "(1., 2., 3., ...) in exactly the order the tool returned them. "
     "If the user then replies with a number, that number is the position in that list; "
     "call get_last_session with that option's exercise_id. "
+    "An 'ambiguous' result can also be close matches by meaning when no name matched "
+    "the words: offer them the same way, as 'Did you mean' and the numbered list. "
 )
 
 
@@ -37,6 +39,7 @@ INSTRUCTIONS = (
 class AgentDeps:
     conn: asyncpg.Connection
     evidence: list[dict[str, Any]] = field(default_factory=list)  # every tool result
+    search: Searcher | None = None  # search by meaning; None means word match only
 
 
 def _jsonable(result: Any) -> dict[str, Any]:
@@ -76,7 +79,7 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, str]:
 
         Use this whenever the user names an exercise.
         """
-        data = _jsonable(await find_exercise(ctx.deps.conn, query))
+        data = _jsonable(await find_exercise(ctx.deps.conn, query, ctx.deps.search))
         ctx.deps.evidence.append(data)
         return data
 

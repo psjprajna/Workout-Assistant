@@ -7,9 +7,14 @@ They are marked `llm`: run them with `uv run pytest -m llm`, skip with `-m "not 
 import math
 
 import pytest
+from qdrant_client import AsyncQdrantClient
 
+from workout_agent.embeddings.index import index_exercises
 from workout_agent.embeddings.openrouter import embed
+from workout_agent.embeddings.search import MIN_SCORE, search_exercises
 from workout_agent.settings import Settings
+
+TEST_COLLECTION = "exercises_real_test"
 
 pytestmark = [
     pytest.mark.llm,
@@ -41,3 +46,33 @@ async def test_similar_meanings_score_closer():
     )
 
     assert _cosine_similarity(target, close) > _cosine_similarity(target, far)
+
+
+async def _real_embedder(texts: list[str]) -> list[list[float]]:
+    return await embed(Settings(), texts)
+
+
+@pytest.fixture
+async def qdrant():
+    client = AsyncQdrantClient(url=Settings().qdrant_url)
+    await client.delete_collection(TEST_COLLECTION)
+    try:
+        yield client
+    finally:
+        await client.delete_collection(TEST_COLLECTION)
+        await client.close()
+
+
+async def test_min_score_separates_real_matches_from_noise(conn, qdrant):
+    await conn.executemany(
+        "insert into exercises (exercise_id, name) values ($1, $2)",
+        [(2, "Barbell Bench Press"), (8, "Barbell Incline Bench Press"), (112, "Barbell Curl")],
+    )
+    await index_exercises(conn, qdrant, _real_embedder, TEST_COLLECTION)
+
+    chest = await search_exercises(qdrant, _real_embedder, "chest press", 3, TEST_COLLECTION)
+    noise = await search_exercises(qdrant, _real_embedder, "zzz", 3, TEST_COLLECTION)
+
+    by_id = {hit.exercise_id: hit.score for hit in chest}
+    assert by_id[2] >= MIN_SCORE
+    assert all(hit.score < MIN_SCORE for hit in noise)

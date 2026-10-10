@@ -2,11 +2,23 @@
 This module provides a function to find exercises in the database based on a query string.
 The search is case-insensitive and supports partial matches. It also prioritizes exact matches
 over partial matches and uses the frequency of exercise usage in logs as a tie-breaker.
+If no name contains the words, it can fall back to a search by meaning (Qdrant) and
+offer the close matches as "did you mean…?".
 """
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
 import asyncpg
+
+from workout_agent.embeddings.search import MIN_SCORE, ScoredExercise
+
+# Takes the user's phrase, returns exercises by meaning, best first. The app passes
+# search_exercises bound to Qdrant and the embedder; tests pass a fake.
+Searcher = Callable[[str], Awaitable[list[ScoredExercise]]]
+
+# At most this many "did you mean…?" options.
+MAX_SUGGESTIONS = 3
 
 
 @dataclass
@@ -21,7 +33,9 @@ class FindResult:
     matches: list[ExerciseMatch]
 
 
-async def find_exercise(conn: asyncpg.Connection, query: str) -> FindResult:
+async def find_exercise(
+    conn: asyncpg.Connection, query: str, search: Searcher | None = None
+) -> FindResult:
     """Turn what the user typed into one of: ok, ambiguous, no_rows."""
 
     # Step 1: tidy the input. If nothing is left, there is nothing to look for.
@@ -58,10 +72,10 @@ async def find_exercise(conn: asyncpg.Connection, query: str) -> FindResult:
     """
     rows = await conn.fetch(sql, like_patterns, clean_query)
 
-    # Step 4: nothing matched at all. This guard must come BEFORE anything
+    # Step 4: no name contains the words. This guard must come BEFORE anything
     # that assumes there is at least one row.
     if not rows:
-        return FindResult(status="no_rows", matches=[])
+        return await _by_meaning(clean_query, search)
 
     # Step 5: turn database rows into ExerciseMatch objects.
     matches = [
@@ -89,3 +103,25 @@ async def find_exercise(conn: asyncpg.Connection, query: str) -> FindResult:
 
     # Step 8: no exact match, but only one partial match: that's our answer.
     return FindResult(status="ok", matches=candidates)
+
+
+async def _by_meaning(query: str, search: Searcher | None) -> FindResult:
+    """Fallback: offer up to 3 exercises close in meaning, or no_rows if none is close.
+
+    Always "ambiguous", even for one hit: a match by meaning is a guess, so the
+    user confirms it ("did you mean…?") before we use it.
+    """
+    if search is None:
+        return FindResult(status="no_rows", matches=[])
+
+    hits = [hit for hit in await search(query) if hit.score >= MIN_SCORE]
+    if not hits:
+        return FindResult(status="no_rows", matches=[])
+
+    return FindResult(
+        status="ambiguous",
+        matches=[
+            ExerciseMatch(exercise_id=hit.exercise_id, name=hit.name)
+            for hit in hits[:MAX_SUGGESTIONS]
+        ],
+    )
