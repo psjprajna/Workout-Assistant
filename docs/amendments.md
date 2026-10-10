@@ -6,7 +6,7 @@ Date 2026-10-06. Replacement text per section, to be ported into the PDF source.
 
 Replace the bullet "The language model runs locally. Personal data stays on the machine and out of version control." with:
 
-> - Models are hosted APIs: TypeSafe Jev for typed decisions and one open-weight generative model on OpenRouter. Only the rows a tool returns for the current question leave the machine. The raw export, the date of birth and the body measurements never do. Provider data collection is denied, and providers that train on API input are excluded. Embeddings stay local through Ollama. The data folder stays out of version control.
+> - Models are hosted APIs: TypeSafe Jev for typed decisions, one open-weight generative model on OpenRouter, and an OpenRouter embedding model for exercise-name matching. Only the rows a tool returns for the current question leave the machine. The raw export, the date of birth and the body measurements never do. Provider data collection is denied, and providers that train on API input are excluded. The data folder stays out of version control.
 
 Add:
 
@@ -38,7 +38,7 @@ Replaced by the two diagrams in `docs/agentic-workflow.md`: the workflow with fi
 | Gateway | The only code that runs an agent: timeout, concurrency limit, retries, and conversion of framework exceptions into typed results. | One `gateway()` around `Agent.run`; `ModelSettings`, `ConcurrencyLimitedModel`, `UsageLimits` |
 | Tools | Typed async functions, the only path facts take to the model; same functions called by code on the fast path. Result envelope, failures as values, read-only, per-call timeout, every call logged into the evidence record. | `FunctionToolset` + `WrapperToolset`; `ask_user` as a deferred tool; see `docs/tools.md` |
 | Session state | Per chat: capped messages, pending question with its evidence so far, last recommendation, user-supplied values. Serial per chat. Saved only on success. | DBOS workflow per chat on Postgres, with Redis as the competing option (§24) |
-| Embedding model | Exercise-name matching. | all-minilm through Ollama, local |
+| Embedding model | Exercise-name matching. | `openai/text-embedding-3-small` on OpenRouter |
 | Evals and tracing | Dataset, experiments, code evaluators, traces by session id, token and latency budgets. | Langfuse, self-hosted; OTel from `Agent.instrument_all()`; standard logging keeps the session id |
 
 Chat UI, API layer, repositories, PostgreSQL, vector store, import pipeline, web lookup step, settings and logging: unchanged. The former "Language model gateway" and "Chat model" rows are replaced by the four rows above.
@@ -93,7 +93,8 @@ Replace or add these rows:
 | Agent framework | Pydantic AI 2.54 | Owns the decision shape, toolsets with per-call logging, pause as a deferred tool, exact tool-call bound, one test double; leaves state in the session store. Two spike rounds, `docs/framework-decision.md`. | Plain asyncio (round 1 winner under the old §12), LangGraph (passes, but the checkpointer replaces the session store and keeps failure writes) |
 | Decision model | TypeSafe Jev | Typed choices only, ~100 ms, $0.042 per M input, native in Pydantic AI. Accuracy evidence is thin, so the first eval compares it with small-model routing. | A small generative model as classifier |
 | Generative model | Qwen3.5-35B-A3B, thinking off, OpenRouter | Only open candidate with published tool benchmarks; pennies a month. Price does not separate candidates at this volume; the eval picks on tool trajectory and faithfulness. | DeepSeek V4.1 Flash, gpt-oss-120b; Haiku 4.5 or GPT-6 Luna as a ceiling check |
-| Model hosting | OpenRouter, provider pinned, `require_parameters`, `data_collection: deny` | One API, structured output guaranteed, no training on inputs. | Direct vendor APIs; local Ollama (kept for embeddings only) |
+| Embedding model | `openai/text-embedding-3-small`, OpenRouter | all-minilm (local, via Ollama) is a small model and undersells exercise-name matching; a hosted model is expected to match phrasing better, and this consolidates onto the provider already used for the generative model. | `all-minilm` through Ollama, local (the original §9 choice) |
+| Model hosting | OpenRouter, provider pinned, `require_parameters`, `data_collection: deny` | One API, structured output guaranteed, no training on inputs. | Direct vendor APIs; local Ollama |
 | Structured output | Pydantic AI `NativeOutput` and tool output with `retries` | Schema enforced by the provider, validated by Pydantic, retried with the error. | Own gateway over Ollama `format` (the original) |
 | Session state | **Two competing options, DBOS first.** DBOS: durable workflow per chat on the Postgres already in the stack; serial per chat and crash recovery by construction; no lock code; keeps the door open to conversation tracking beyond one chat later without a new store. Redis: one key per chat, TTL expiry, fastest reads; the original design. | DBOS first because durability and per-chat serialisation come free and the data is already in Postgres. Redis later as a speed improvement if measured session latency matters. | In-memory dict, Postgres table by hand |
 | Evals | Langfuse, self-hosted | Datasets, experiments from code with code evaluators, traces by session id, budgets as run-level scores, CI gate. | DeepEval, pydantic-evals |

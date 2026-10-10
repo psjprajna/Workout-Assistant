@@ -7,7 +7,6 @@ def test_defaults_point_at_local_services():
     s = Settings(_env_file=None)
     assert s.database_url == "postgresql://workout:workout@localhost:5433/workout"
     assert s.qdrant_url == "http://localhost:6333"
-    assert s.ollama_url == "http://localhost:11434"
 
 
 def test_environment_overrides_defaults(monkeypatch):
