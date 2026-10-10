@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     # Where each service lives. Defaults match docker-compose.yml.
     database_url: str = "postgresql://workout:workout@localhost:5433/workout"
     qdrant_url: str = "http://localhost:6333"
+    # Where the chat page finds the API (uvicorn's default port).
+    api_url: str = "http://localhost:8000"
 
     # Optional API keys hidden from logs/repr
     openrouter_api_key: SecretStr | None = None

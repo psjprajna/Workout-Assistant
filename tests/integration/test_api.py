@@ -69,3 +69,9 @@ async def test_chat_with_real_agent_remembers_the_question(seeded, test_database
 
             second = await _chat(c, "s1", "the incline one")
             assert "60" in second.json()["reply"]  # incline's seeded weight
+
+async def test_chat_page_function_talks_to_the_real_endpoint(client):
+    from workout_agent.ui.client import send_message
+
+    reply = await send_message(client, "page", "last time I did bench press?")
+    assert "Which one" in reply

@@ -6,11 +6,14 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "asyncpg>=0.31.0",
+    "chainlit>=2.12.0",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
     "pydantic-ai-slim[openrouter,typesafe]>=2.54.0",
     "pydantic-settings>=2.15.0",
     "qdrant-client>=1.19.1",
+    # traceloop-sdk (via chainlit -> literalai) imports requests without declaring it
+    "requests>=2.34.2",
     "uvicorn[standard]>=0.54.0",
 ]
 

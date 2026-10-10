@@ -19,6 +19,16 @@ Design phase complete. Decisions made, each argued in a document:
 
 Next: phase 1 of the build order in `docs/amendments.md` §27.
 
+## Running the chat
+
+```sh
+docker compose up -d                                            # Postgres and Qdrant
+uv run uvicorn workout_agent.api.main:app --reload              # API on :8000
+uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :8001
+```
+
+The chat page sends every message to the API's `POST /chat`, so uvicorn must be running. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
+
 ## Reading order
 
 1. `docs/explanations.md`: what changed and why, every concept in plain terms, open questions. Start here.
