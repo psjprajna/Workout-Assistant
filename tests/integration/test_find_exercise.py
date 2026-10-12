@@ -182,7 +182,9 @@ async def test_db_means_dumbbell(conn):
 async def test_plural_and_hyphen_still_match_whole_words(conn):
     await _seed_more(conn)
     assert [m.exercise_id for m in (await find_exercise(conn, "squats")).matches] == [12]
-    assert [m.exercise_id for m in (await find_exercise(conn, "push ups")).matches] == [47, 627]
+    # "push ups" is the name "Push Up" in the plural: exact, so no question.
+    push_ups = await find_exercise(conn, "push ups")
+    assert (push_ups.status, [m.exercise_id for m in push_ups.matches]) == ("ok", [47])
     assert [m.exercise_id for m in (await find_exercise(conn, "t-bar row")).matches] == [52]
 
 
@@ -223,3 +225,35 @@ async def test_regex_characters_in_the_query_are_plain_text(conn):
     await _seed_more(conn)
     result = await find_exercise(conn, "row (.*")
     assert result.status == "no_rows"
+
+
+async def _seed_catalog(conn):
+    await _seed_more(conn)
+    await conn.executemany(
+        "insert into exercise_aliases (exercise_id, alias, source) values ($1, $2, 'catalog')",
+        [(86, "lat pulldown"), (3, "bent over row")],
+    )
+    await conn.executemany(
+        "insert into exercise_muscles (exercise_id, muscle, position) values ($1, $2, $3)",
+        [(86, "lats", 0), (3, "upper back", 0), (3, "lats", 1), (119, "forearms", 0)],
+    )
+
+
+async def test_other_names_match_like_names(conn):
+    await _seed_catalog(conn)
+    result = await find_exercise(conn, "lat pulldowns")
+    assert (result.status, [m.exercise_id for m in result.matches]) == ("ok", [86])
+
+
+async def test_muscle_phrase_offers_exercises_tagged_with_it_main_muscle_first(conn):
+    await _seed_catalog(conn)
+    # "back" covers back muscles and lats; Barbell Row works the upper back most.
+    result = await find_exercise(conn, "something for my back")
+    assert result.status == "ambiguous"
+    assert [m.exercise_id for m in result.matches] == [3, 86]
+
+
+async def test_muscle_tags_come_before_a_name_that_only_mentions_the_muscle(conn):
+    await _seed_catalog(conn)
+    result = await find_exercise(conn, "forearms")
+    assert [m.exercise_id for m in result.matches] == [119, 627]

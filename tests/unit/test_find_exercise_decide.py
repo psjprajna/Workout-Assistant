@@ -81,3 +81,12 @@ def test_not_an_exercise_wins_over_everything():
     c = Candidates(parse_query("push day"), text=_text(47), meaning=_scored((47, 0.9)))
     d = decide(c)
     assert (d.result.status, d.step) == ("no_rows", "guard")
+
+
+def test_one_exact_alias_is_ok_only_when_nothing_else_matches():
+    alias = [TextHit(199, "Barbell Romanian Deadlift", False, 0, exact_alias=True)]
+    alone = decide(Candidates(parse_query("rdl"), text=alias))
+    assert (alone.result.status, _ids(alone)) == ("ok", [199])
+
+    crowded = decide(Candidates(parse_query("squat"), text=alias + _text(135)))
+    assert (crowded.result.status, _ids(crowded)) == ("ambiguous", [199, 135])

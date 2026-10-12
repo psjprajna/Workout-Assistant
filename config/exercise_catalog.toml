@@ -1,0 +1,934 @@
+# Other names, muscles and equipment for each exercise, for find_exercise and the
+# Qdrant index (docs/tools.md). Loaded by scripts/load_catalog.py.
+#
+# aliases:   what people call it: shorthand ("rdl"), gym slang ("pec deck"), other names.
+#            An alias on several exercises makes that phrase ask "which one?".
+# muscles:   main muscle first. Used to answer muscle phrases ("something for my back").
+# equipment: one word or two, used in the text the index embeds.
+#
+# Public JEFIT exercise names, no personal data. Drafted by Claude from general gym
+# knowledge, not from evals/search_cases.toml; review and correct freely.
+
+[[exercise]]
+id = 57  # Air Bike
+aliases = ["assault bike", "fan bike", "echo bike"]
+muscles = ["cardio"]
+equipment = "cardio machine"
+
+[[exercise]]
+id = 92  # Back Hyperextension
+aliases = ["hyperextension", "back extension", "roman chair", "45 degree back extension"]
+muscles = ["lower back", "glutes", "hamstrings"]
+equipment = "bench"
+
+[[exercise]]
+id = 66  # Barbell Ab Rollout
+aliases = ["ab rollout", "ab wheel", "ab roller", "rollout"]
+muscles = ["abs"]
+equipment = "barbell"
+
+[[exercise]]
+id = 294  # Barbell Ab Rollout
+aliases = ["ab rollout", "ab wheel", "ab roller", "rollout"]
+muscles = ["abs"]
+equipment = "barbell"
+
+[[exercise]]
+id = 2  # Barbell Bench Press
+aliases = ["bench press", "bench", "flat bench", "flat bench press"]
+muscles = ["chest", "triceps", "front delts"]
+equipment = "barbell"
+
+[[exercise]]
+id = 3  # Barbell Bent-Over Row
+aliases = ["barbell row", "bent over row"]
+muscles = ["upper back", "lats", "biceps", "rear delts"]
+equipment = "barbell"
+
+[[exercise]]
+id = 205  # Barbell Bulgarian Split Squat
+aliases = ["bulgarian split squat", "bss", "split squat", "rear foot elevated split squat", "rfess"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "barbell"
+
+[[exercise]]
+id = 1346  # Dumbbell Bulgarian Split Squat
+aliases = ["dumbbell split squat", "bulgarian split squat", "bss", "split squat", "rear foot elevated split squat", "rfess"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 4  # Barbell Close Grip Bench Press
+aliases = ["close grip bench", "close grip bench press", "cgbp"]
+muscles = ["triceps", "chest", "front delts"]
+equipment = "barbell"
+
+[[exercise]]
+id = 112  # Barbell Curl
+aliases = ["bicep curl", "straight bar curl", "standing barbell curl"]
+muscles = ["biceps", "forearms"]
+equipment = "barbell"
+
+[[exercise]]
+id = 93  # Barbell Deadlift
+aliases = ["deadlift", "conventional deadlift"]
+muscles = ["glutes", "hamstrings", "lower back", "quads", "traps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 5  # Barbell Decline Bench Press
+aliases = ["decline bench", "decline bench press", "decline press"]
+muscles = ["lower chest", "chest", "triceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 6  # Barbell Front Raise
+aliases = ["front raise"]
+muscles = ["front delts", "shoulders"]
+equipment = "barbell"
+
+[[exercise]]
+id = 7  # Barbell Good Morning
+aliases = ["good morning"]
+muscles = ["hamstrings", "lower back", "glutes"]
+equipment = "barbell"
+
+[[exercise]]
+id = 386  # Barbell Hip Thrust
+aliases = ["hip thrust"]
+muscles = ["glutes", "hamstrings"]
+equipment = "barbell"
+
+[[exercise]]
+id = 8  # Barbell Incline Bench Press
+aliases = ["incline bench", "incline bench press", "incline press"]
+muscles = ["upper chest", "chest", "front delts", "triceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 128  # Barbell Lunge
+aliases = ["lunge"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "barbell"
+
+[[exercise]]
+id = 126  # Barbell Palms Down Wrist Curl
+aliases = ["reverse wrist curl", "wrist extension", "wrist curl"]
+muscles = ["forearms"]
+equipment = "barbell"
+
+[[exercise]]
+id = 119  # Barbell Palms Up Wrist Curl
+aliases = ["wrist curl"]
+muscles = ["forearms"]
+equipment = "barbell"
+
+[[exercise]]
+id = 117  # Barbell Posterior Wrist Curl
+aliases = ["behind the back wrist curl", "wrist curl"]
+muscles = ["forearms"]
+equipment = "barbell"
+
+[[exercise]]
+id = 1128  # Barbell Prone Shoulder Pull
+aliases = ["prone row", "chest supported barbell row"]
+muscles = ["rear delts", "upper back", "traps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 111  # Barbell Reverse Curl
+aliases = ["reverse curl", "reverse grip curl"]
+muscles = ["forearms", "biceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 1187  # Barbell Reverse Grip Skullcrusher
+aliases = ["skull crusher", "lying tricep extension", "reverse grip skull crusher"]
+muscles = ["triceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 1086  # Barbell Reverse Wrist Curl
+aliases = ["reverse wrist curl", "wrist extension"]
+muscles = ["forearms"]
+equipment = "barbell"
+
+[[exercise]]
+id = 199  # Barbell Romanian Deadlift
+aliases = ["rdl", "romanian deadlift", "stiff leg deadlift", "sldl"]
+muscles = ["hamstrings", "glutes", "lower back"]
+equipment = "barbell"
+
+[[exercise]]
+id = 11  # Barbell Shrug
+aliases = ["shrug"]
+muscles = ["traps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 12  # Barbell Squat
+aliases = ["squat", "back squat"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "barbell"
+
+[[exercise]]
+id = 143  # Barbell Standing Calf Raise
+aliases = ["calf raise"]
+muscles = ["calves"]
+equipment = "barbell"
+
+[[exercise]]
+id = 13  # Barbell Upright Row
+aliases = ["upright row"]
+muscles = ["side delts", "traps", "shoulders"]
+equipment = "barbell"
+
+[[exercise]]
+id = 275  # Barbell Wide Grip Bicep Curl
+aliases = ["wide grip curl", "wide grip barbell curl"]
+muscles = ["biceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 229  # Bench Dip
+aliases = ["tricep dip", "bench dips"]
+muscles = ["triceps", "chest", "front delts"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 1055  # Bench Push-Up
+aliases = ["incline push up"]
+muscles = ["chest", "triceps"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 73  # Bench Supine Leg Raise
+aliases = ["lying leg raise", "bench leg raise", "flat bench leg raise"]
+muscles = ["abs", "hip flexors"]
+equipment = "bench"
+
+[[exercise]]
+id = 1220  # Bodyweight Side Lunge
+aliases = ["side lunge", "lateral lunge"]
+muscles = ["quads", "adductors", "glutes"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 1225  # Bodyweight Step-Up
+aliases = ["step up", "box step up"]
+muscles = ["quads", "glutes"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 1209  # Bodyweight Wall Squat
+aliases = ["wall sit", "wall squat"]
+muscles = ["quads"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 934  # Box Side to Side Shuffle
+aliases = ["box shuffle", "lateral box shuffle"]
+muscles = ["cardio", "quads"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 194  # Bridge
+aliases = ["glute bridge", "hip bridge"]
+muscles = ["glutes", "hamstrings"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 102  # Cable Bicep Curl
+aliases = ["cable curl"]
+muscles = ["biceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 1279  # Cable Decline Chest Fly
+aliases = ["decline cable fly", "high to low cable fly"]
+muscles = ["lower chest", "chest"]
+equipment = "cable"
+
+[[exercise]]
+id = 696  # Cable Grip Lat Pulldown (Narrow Grip)
+aliases = ["close grip pulldown", "close grip lat pulldown", "narrow grip pulldown", "v bar pulldown"]
+muscles = ["lats", "biceps", "upper back"]
+equipment = "cable"
+
+[[exercise]]
+id = 14  # Cable High Cross-Over
+aliases = ["cable crossover", "high cable crossover", "cable fly"]
+muscles = ["chest", "lower chest"]
+equipment = "cable"
+
+[[exercise]]
+id = 19  # Cable Lateral Raise
+aliases = ["cable side raise"]
+muscles = ["side delts", "shoulders"]
+equipment = "cable"
+
+[[exercise]]
+id = 1313  # Cable Leg Kickback
+aliases = ["cable kickback", "cable glute kickback"]
+muscles = ["glutes", "hamstrings"]
+equipment = "cable"
+
+[[exercise]]
+id = 1059  # Cable Lower Chest Raise
+aliases = ["low to high cable fly", "low cable fly"]
+muscles = ["upper chest", "chest", "front delts"]
+equipment = "cable"
+
+[[exercise]]
+id = 1057  # Cable Mid Chest Crossover
+aliases = ["cable crossover", "cable fly", "standing cable fly"]
+muscles = ["chest"]
+equipment = "cable"
+
+[[exercise]]
+id = 1127  # Cable One-Arm Lateral Raise
+aliases = ["single arm cable lateral raise", "one arm cable lateral raise"]
+muscles = ["side delts", "shoulders"]
+equipment = "cable"
+
+[[exercise]]
+id = 1041  # Cable One-Arm Seated Row
+aliases = ["single arm cable row", "one arm cable row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 225  # Cable One-Arm Tricep Extension
+aliases = ["single arm cable tricep extension"]
+muscles = ["triceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 1334  # Cable One-Arm Tricep Pushdown
+aliases = ["single arm pushdown", "one arm pushdown"]
+muscles = ["triceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 104  # Cable Reverse Curl
+aliases = ["cable reverse grip curl"]
+muscles = ["forearms", "biceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 1106  # Cable Reverse Fly
+aliases = ["cable rear delt fly", "reverse cable fly"]
+muscles = ["rear delts", "upper back", "shoulders"]
+equipment = "cable"
+
+[[exercise]]
+id = 874  # Cable Rope Face Pull
+aliases = ["face pull", "rope face pull"]
+muscles = ["rear delts", "upper back", "traps", "shoulders"]
+equipment = "cable"
+
+[[exercise]]
+id = 155  # Cable Rope Overhead Tricep Extension
+aliases = ["overhead tricep extension", "overhead cable extension", "rope overhead extension", "french press"]
+muscles = ["triceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 159  # Cable Rope Triceps Pushdown
+aliases = ["rope pushdown", "tricep pushdown", "rope pressdown", "tricep rope pushdown"]
+muscles = ["triceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 21  # Cable Seated Row
+aliases = ["seated row", "seated cable row", "cable row", "low row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 1164  # Cable Tricep Kickback
+aliases = ["cable kickback tricep"]
+muscles = ["triceps"]
+equipment = "cable"
+
+[[exercise]]
+id = 702  # Cable Upper Row
+aliases = ["high cable row"]
+muscles = ["upper back", "rear delts", "lats"]
+equipment = "cable"
+
+[[exercise]]
+id = 140  # Calf Press On Leg Press
+aliases = ["leg press calf raise", "calf press"]
+muscles = ["calves"]
+equipment = "machine"
+
+[[exercise]]
+id = 77  # Crunches
+aliases = ["crunch", "ab crunch"]
+muscles = ["abs"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 78  # Decline Crunch
+aliases = ["decline sit up"]
+muscles = ["abs"]
+equipment = "bench"
+
+[[exercise]]
+id = 24  # Dip
+aliases = ["parallel bar dip", "chest dip", "tricep dip"]
+muscles = ["triceps", "chest", "front delts"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 116  # Dumbbell Alternating Bicep Curl
+aliases = ["alternating curl", "dumbbell curl"]
+muscles = ["biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 114  # Dumbbell Alternating Hammer Curl
+aliases = ["alternating hammer curl", "hammer curl"]
+muscles = ["biceps", "forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 1007  # Dumbbell Alternating Hammer Preacher Curl
+aliases = ["hammer preacher curl"]
+muscles = ["biceps", "forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 26  # Dumbbell Bench Press
+aliases = ["db bench", "flat dumbbell press", "dumbbell press"]
+muscles = ["chest", "triceps", "front delts"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 1107  # Dumbbell Bent-Over Reverse Fly
+aliases = ["rear delt fly", "bent over reverse fly", "rear delt raise"]
+muscles = ["rear delts", "upper back", "shoulders"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 88  # Dumbbell Bent-Over Row
+aliases = ["dumbbell row", "one arm dumbbell row", "single arm dumbbell row"]
+muscles = ["lats", "upper back", "biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 100  # Dumbbell Bicep Curl
+aliases = ["dumbbell curl", "bicep curl"]
+muscles = ["biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 142  # Dumbbell Calf Raise
+aliases = ["dumbbell standing calf raise"]
+muscles = ["calves"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 107  # Dumbbell Concentration Curl
+aliases = ["concentration curl"]
+muscles = ["biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 39  # Dumbbell Decline Bench Press
+aliases = ["decline dumbbell press"]
+muscles = ["lower chest", "chest", "triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 41  # Dumbbell Fly
+aliases = ["dumbbell flye", "chest fly", "flat dumbbell fly", "pec fly"]
+muscles = ["chest"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 413  # Dumbbell Front Raise
+aliases = ["front raise"]
+muscles = ["front delts", "shoulders"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 29  # Dumbbell Front Raise
+aliases = ["front raise"]
+muscles = ["front delts", "shoulders"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 108  # Dumbbell Hammer Curl
+aliases = ["hammer curl"]
+muscles = ["biceps", "forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 98  # Dumbbell Hammer Curl (Cross Body)
+aliases = ["cross body hammer curl", "cross body curl", "pinwheel curl"]
+muscles = ["biceps", "forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 31  # Dumbbell Incline Bench Press
+aliases = ["incline dumbbell press", "incline dumbbell bench"]
+muscles = ["upper chest", "chest", "front delts", "triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 106  # Dumbbell Incline Curl
+aliases = ["incline curl", "incline dumbbell curl"]
+muscles = ["biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 804  # Dumbbell Incline Hammer Curl
+aliases = ["incline hammer curl"]
+muscles = ["biceps", "forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 32  # Dumbbell Lateral Raise
+aliases = ["lateral raise", "side raise", "side lateral raise", "lat raise"]
+muscles = ["side delts", "shoulders"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 136  # Dumbbell Lunge
+aliases = ["lunge"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 109  # Dumbbell One-Arm Preacher Curl
+aliases = ["single arm preacher curl", "preacher curl"]
+muscles = ["biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 123  # Dumbbell Palms Down Wrist Curl
+aliases = ["reverse wrist curl", "wrist extension", "wrist curl"]
+muscles = ["forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 118  # Dumbbell Palms Up Wrist Curl
+aliases = ["wrist curl"]
+muscles = ["forearms"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 375  # Dumbbell Pullover
+aliases = ["pullover", "pull over"]
+muscles = ["chest", "lats", "triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 38  # Dumbbell Rear Deltoid Row
+aliases = ["rear delt row"]
+muscles = ["rear delts", "upper back"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 285  # Dumbbell Reverse Bicep Curl
+aliases = ["dumbbell reverse curl", "reverse curl"]
+muscles = ["forearms", "biceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 441  # Dumbbell Reverse Flye
+aliases = ["reverse fly", "rear delt fly", "dumbbell reverse fly"]
+muscles = ["rear delts", "upper back", "shoulders"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 1433  # Dumbbell Romanian Deadlift
+aliases = ["dumbbell rdl", "rdl", "romanian deadlift", "stiff leg deadlift", "sldl"]
+muscles = ["hamstrings", "glutes", "lower back"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 230  # Dumbbell Seated One-Arm Tricep Extension
+aliases = ["single arm overhead tricep extension", "seated overhead tricep extension"]
+muscles = ["triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 48  # Dumbbell Shoulder Press
+aliases = ["shoulder press", "dumbbell overhead press", "seated dumbbell press", "overhead press", "ohp", "military press", "dumbbell press"]
+muscles = ["shoulders", "front delts", "triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 247  # Dumbbell Tricep Extension
+aliases = ["overhead tricep extension", "dumbbell overhead extension", "french press"]
+muscles = ["triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 777  # Dumbbell Tricep Kickback
+aliases = ["tricep kickback"]
+muscles = ["triceps"]
+equipment = "dumbbell"
+
+[[exercise]]
+id = 310  # Elliptical Training
+aliases = ["elliptical", "cross trainer"]
+muscles = ["cardio"]
+equipment = "cardio machine"
+
+[[exercise]]
+id = 1074  # EZ Bar Curl (Reverse Grip)
+aliases = ["ez bar curl", "ez curl", "reverse grip ez bar curl"]
+muscles = ["biceps", "forearms"]
+equipment = "ez bar"
+
+[[exercise]]
+id = 223  # EZ Bar Decline Close Grip Skull Crusher
+aliases = ["skull crusher", "decline skull crusher", "ez bar skull crusher"]
+muscles = ["triceps"]
+equipment = "ez bar"
+
+[[exercise]]
+id = 198  # Flutter Kick
+aliases = ["scissor kick"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 387  # Glute Kickback
+aliases = ["donkey kick", "quadruped kickback"]
+muscles = ["glutes"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 384  # Glute Stretch
+aliases = ["pigeon stretch", "figure four stretch"]
+muscles = ["glutes"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 1199  # Hack Squat (Reverse Position)
+aliases = ["reverse hack squat", "hack squat"]
+muscles = ["glutes", "quads", "hamstrings"]
+equipment = "machine"
+
+[[exercise]]
+id = 690  # Hanging Knee Raise
+aliases = ["knee raise", "hanging knee tuck"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 61  # Hanging Leg Raise
+aliases = ["hanging leg lift"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 312  # Indoor Cycling
+aliases = ["spin class", "spinning", "spin bike", "cycling", "bike"]
+muscles = ["cardio"]
+equipment = "cardio machine"
+
+[[exercise]]
+id = 1268  # Iso Lateral Wide Pulldown
+aliases = ["iso lateral pulldown", "hammer strength pulldown", "machine pulldown", "lat pulldown"]
+muscles = ["lats", "upper back", "biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 479  # Kettlebell Goblet Squat
+aliases = ["goblet squat"]
+muscles = ["quads", "glutes"]
+equipment = "kettlebell"
+
+[[exercise]]
+id = 130  # Leg Extension
+aliases = ["quad extension", "knee extension"]
+muscles = ["quads"]
+equipment = "machine"
+
+[[exercise]]
+id = 132  # Leg Press
+aliases = ["leg press machine", "seated leg press"]
+muscles = ["quads", "glutes", "hamstrings"]
+equipment = "machine"
+
+[[exercise]]
+id = 44  # Leg Raise
+aliases = ["lying leg raise", "floor leg raise"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 853  # Leverage Incline Chest Press
+aliases = ["incline chest press machine", "incline machine press", "hammer strength incline press"]
+muscles = ["upper chest", "chest", "front delts", "triceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 820  # Leverage Machine Iso Row
+aliases = ["iso row", "machine row", "hammer strength row", "iso lateral row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 886  # Leverage Machine Shrug
+aliases = ["machine shrug", "shrug"]
+muscles = ["traps"]
+equipment = "machine"
+
+[[exercise]]
+id = 56  # Machine Ab Crunch
+aliases = ["ab crunch machine", "ab machine", "crunch machine"]
+muscles = ["abs"]
+equipment = "machine"
+
+[[exercise]]
+id = 1263  # Machine Assisted Chin-Up
+aliases = ["assisted chin up"]
+muscles = ["lats", "biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 1261  # Machine Assisted Dip
+aliases = ["assisted dip", "gravitron dip"]
+muscles = ["triceps", "chest"]
+equipment = "machine"
+
+[[exercise]]
+id = 1262  # Machine Assisted Pull Up
+aliases = ["assisted pull up", "gravitron", "pull up", "pullup"]
+muscles = ["lats", "biceps", "upper back"]
+equipment = "machine"
+
+[[exercise]]
+id = 1264  # Machine Assisted Pull-Up (Hammer Grip)
+aliases = ["neutral grip pull up", "hammer grip pull up", "assisted neutral grip pull up"]
+muscles = ["lats", "biceps", "upper back"]
+equipment = "machine"
+
+[[exercise]]
+id = 1254  # Machine Calf Press
+aliases = ["calf press machine", "calf press"]
+muscles = ["calves"]
+equipment = "machine"
+
+[[exercise]]
+id = 45  # Machine Fly
+aliases = ["pec deck", "pec fly", "butterfly", "chest fly machine", "pec deck fly"]
+muscles = ["chest"]
+equipment = "machine"
+
+[[exercise]]
+id = 216  # Machine Hip Abduction
+aliases = ["hip abduction", "abductor machine", "outer thigh machine", "abductors"]
+muscles = ["abductors", "glutes"]
+equipment = "machine"
+
+[[exercise]]
+id = 217  # Machine Hip Adduction
+aliases = ["hip adduction", "adductor machine", "inner thigh machine", "adductors"]
+muscles = ["adductors"]
+equipment = "machine"
+
+[[exercise]]
+id = 178  # Machine Incline Chest Press
+aliases = ["incline chest press", "incline machine press"]
+muscles = ["upper chest", "chest", "triceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 1274  # Machine Iso Lateral High Row
+aliases = ["high row", "iso lateral high row", "hammer strength high row"]
+muscles = ["upper back", "lats", "rear delts"]
+equipment = "machine"
+
+[[exercise]]
+id = 1309  # Machine Leg Press (Wide Stance)
+aliases = ["wide stance leg press"]
+muscles = ["glutes", "quads", "adductors"]
+equipment = "machine"
+
+[[exercise]]
+id = 878  # Machine Reverse Fly
+aliases = ["reverse pec deck", "rear delt machine", "rear delt fly machine", "reverse fly machine"]
+muscles = ["rear delts", "upper back", "shoulders"]
+equipment = "machine"
+
+[[exercise]]
+id = 700  # Machine Seated Row
+aliases = ["seated row machine", "machine row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 46  # Machine Shoulder Press
+aliases = ["shoulder press machine", "seated shoulder press", "shoulder press"]
+muscles = ["shoulders", "front delts", "triceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 1266  # Machine Vertical Row (Close Grip)
+aliases = ["vertical row", "close grip machine row"]
+muscles = ["upper back", "lats"]
+equipment = "machine"
+
+[[exercise]]
+id = 1267  # Machine Vertical Row (Reverse Grip)
+aliases = ["reverse grip machine row", "underhand machine row"]
+muscles = ["lats", "upper back", "biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 627  # Modified Push-Up to Forearms
+aliases = ["push up to plank", "plank up down"]
+muscles = ["abs", "chest", "triceps"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 674  # Parallel Bar Hip Flexion
+aliases = ["captain's chair", "captains chair", "dip bar knee raise", "vertical knee raise"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 1273  # Parallel Bar Leg Raise
+aliases = ["captain's chair leg raise", "captains chair leg raise", "vertical leg raise", "dip bar leg raise"]
+muscles = ["abs", "hip flexors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 631  # Plank
+aliases = ["front plank", "forearm plank"]
+muscles = ["abs"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 271  # Preacher Curl Machine
+aliases = ["machine preacher curl", "preacher curl"]
+muscles = ["biceps"]
+equipment = "machine"
+
+[[exercise]]
+id = 160  # Prone Leg Curl
+aliases = ["lying leg curl", "hamstring curl", "leg curl"]
+muscles = ["hamstrings"]
+equipment = "machine"
+
+[[exercise]]
+id = 47  # Push Up
+aliases = ["pushup", "press up"]
+muscles = ["chest", "triceps", "front delts"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 812  # Reverse Lunge Crossover
+aliases = ["curtsy lunge", "crossover lunge"]
+muscles = ["glutes", "quads", "adductors"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 144  # Seated Calf Raise
+aliases = ["seated calf"]
+muscles = ["calves"]
+equipment = "machine"
+
+[[exercise]]
+id = 1102  # Single-Leg Press
+aliases = ["one leg press", "unilateral leg press"]
+muscles = ["quads", "glutes"]
+equipment = "machine"
+
+[[exercise]]
+id = 91  # Smith Machine Bent-Over Row
+aliases = ["smith row", "smith machine row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 1048  # Smith Machine Bent-Over Row (Reverse Grip)
+aliases = ["underhand smith row", "reverse grip smith row"]
+muscles = ["lats", "upper back", "biceps"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 189  # Smith Machine Deadlift
+aliases = ["smith deadlift"]
+muscles = ["glutes", "hamstrings", "lower back"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 784  # Smith Machine Lunge
+aliases = ["smith lunge"]
+muscles = ["quads", "glutes"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 1242  # Smith Machine Single-Leg Calf Raise
+aliases = ["single leg calf raise", "smith calf raise"]
+muscles = ["calves"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 135  # Smith Machine Squat
+aliases = ["smith squat"]
+muscles = ["quads", "glutes"]
+equipment = "smith machine"
+
+[[exercise]]
+id = 145  # Standing Calf Raise
+aliases = ["calf raise", "standing calf raise machine"]
+muscles = ["calves"]
+equipment = "machine"
+
+[[exercise]]
+id = 318  # Stationary Bike
+aliases = ["exercise bike", "bike", "cycling", "spin bike"]
+muscles = ["cardio"]
+equipment = "cardio machine"
+
+[[exercise]]
+id = 52  # T Bar Row
+aliases = ["tbar row", "landmine row"]
+muscles = ["upper back", "lats", "biceps"]
+equipment = "barbell"
+
+[[exercise]]
+id = 321  # Treadmill Running
+aliases = ["running", "treadmill", "jogging", "run"]
+muscles = ["cardio"]
+equipment = "cardio machine"
+
+[[exercise]]
+id = 322  # Walking
+aliases = ["walk", "treadmill walking", "incline walk"]
+muscles = ["cardio"]
+equipment = "bodyweight"
+
+[[exercise]]
+id = 675  # Weighted Decline Crunch
+aliases = ["weighted decline sit up"]
+muscles = ["abs"]
+equipment = "plate"
+
+[[exercise]]
+id = 677  # Weighted Trunk Rotation
+aliases = ["trunk rotation", "standing russian twist", "plate twist"]
+muscles = ["obliques", "abs"]
+equipment = "plate"
+
+[[exercise]]
+id = 339  # Weight Plate Russian Twist
+aliases = ["russian twist"]
+muscles = ["obliques", "abs"]
+equipment = "plate"
+
+[[exercise]]
+id = 86  # Wide Grip Lat Pulldown
+aliases = ["lat pulldown", "pulldown", "wide pulldown"]
+muscles = ["lats", "upper back", "biceps"]
+equipment = "cable"

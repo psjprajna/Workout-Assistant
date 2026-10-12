@@ -4,7 +4,8 @@ Find the exercise the user means, as one of: ok, ambiguous, no_rows.
 The search runs in stages, cheapest and surest first:
   1. tidy the phrase: lowercase, hyphens to spaces, "db" -> "dumbbell"…
   2. phrases about a day or a workout ("push day") are not exercise names: no_rows
-  3. whole-word match on exercise names and their other names (exercise_aliases)
+  3. whole-word match on exercise names and their other names (exercise_aliases);
+     a phrase that only names muscles ("lats") also gets exercises tagged with them
   4. when the words match nothing: fix misspelt words ("dumbell" -> "dumbbell", pg_trgm)
      and match again, and search by meaning (Qdrant); both are offered, never assumed
 Stages 1 to 4 are plain code and SQL, except search by meaning, which calls
@@ -26,6 +27,9 @@ Searcher = Callable[[str], Awaitable[list[ScoredExercise]]]
 
 # At most this many "did you mean…?" options from the typo and meaning stages.
 MAX_SUGGESTIONS = 3
+
+# At most this many options for a muscle phrase ("something for my back").
+MAX_MUSCLE_OPTIONS = 5
 
 # Trigram similarity a misspelt word needs to its correction. Measured on the real names:
 # typos score 0.45 to 0.73 ("dumbel"->dumbbell 0.45, "lungs"->lunge 0.50, "dumbell" 0.70);
@@ -58,8 +62,24 @@ MUSCLE_WORDS = frozenset(
      "back", "trap", "traps", "shoulder", "shoulders", "delt", "delts", "bicep", "biceps",
      "tricep", "triceps", "forearm", "forearms", "arm", "arms", "glute", "glutes", "quad",
      "quads", "hamstring", "hamstrings", "calf", "calves", "leg", "legs", "thigh", "thighs",
-     "upper", "lower", "rear", "front", "side", "inner", "outer", "mid", "middle"}
+     "upper", "lower", "rear", "front", "side", "inner", "outer", "mid", "middle",
+     "adductor", "adductors", "abductor", "abductors", "hip", "hips", "flexor", "flexors"}
 )
+
+# Words people use for a muscle group -> the catalog muscle names they cover
+# (config/exercise_catalog.toml). Any other muscle word must appear in the muscle name.
+MUSCLE_GROUPS = {
+    "back": ("back", "lats"),
+    "pec": ("chest",),
+    "pecs": ("chest",),
+    "core": ("abs", "obliques"),
+    "arm": ("biceps", "triceps", "forearms"),
+    "arms": ("biceps", "triceps", "forearms"),
+    "leg": ("quads", "hamstrings", "glutes", "calves"),
+    "legs": ("quads", "hamstrings", "glutes", "calves"),
+    "delt": ("delts", "shoulders"),
+    "delts": ("delts", "shoulders"),
+}
 
 # Irregular plurals the s/es rule in _word_pattern does not cover.
 SINGULAR = {"calves": "calf", "flyes": "fly", "flies": "fly"}
@@ -72,12 +92,12 @@ NORMALISED_TEXT = (
 # Every searchable text: the name, then each other name.
 SEARCH_TEXTS = f"""
     texts as (
-        select exercise_id, name as text from exercises
+        select exercise_id, name as text, true as is_name from exercises
         union all
-        select exercise_id, alias as text from exercise_aliases
+        select exercise_id, alias as text, false as is_name from exercise_aliases
     ),
     normalised as (
-        select t.exercise_id, {NORMALISED_TEXT} as text from texts t
+        select t.exercise_id, {NORMALISED_TEXT} as text, t.is_name from texts t
     )
 """
 
@@ -94,15 +114,16 @@ class FindResult:
     matches: list[ExerciseMatch]
 
 
-Step = Literal["guard", "exact", "text", "fuzzy", "meaning", "none"]
+Step = Literal["guard", "exact", "muscle", "text", "fuzzy", "meaning", "none"]
 
 
 @dataclass
 class TextHit:
     exercise_id: int
     name: str
-    exact: bool  # the whole phrase equals the name or one of its other names
+    exact: bool  # the whole phrase equals the name
     usage_count: int
+    exact_alias: bool = False  # the whole phrase equals one of its other names
 
 
 @dataclass
@@ -119,6 +140,7 @@ class Candidates:
 
     query: Query
     text: list[TextHit]
+    muscle: list[TextHit] = field(default_factory=list)  # tagged with the muscles named
     corrected: list[str] = field(default_factory=list)  # words after spelling fixes
     fuzzy: list[TextHit] = field(default_factory=list)  # whole-word match on `corrected`
     meaning: list[ScoredExercise] = field(default_factory=list)
@@ -167,12 +189,20 @@ def _forms(word: str) -> list[str]:
     return sorted(forms)
 
 
-def _word_pattern(word: str) -> str:
+def _phrase_forms(phrase: str) -> list[str]:
+    """The phrase with its last word in each likely singular: "calf raises" -> calf raise."""
+    *head, last = phrase.split()
+    return [" ".join([*head, form]) for form in _forms(last)]
+
+
+def _word_pattern(word: str, *more: str) -> str:
     r"""A whole-word regex that also accepts the singular or plural: "raises" -> Raise.
 
-    \m and \M are PostgreSQL's start- and end-of-word markers.
+    `more` are other words that count as a match. \m and \M are PostgreSQL's start-
+    and end-of-word markers.
     """
-    alternatives = "|".join(_pg_regex_escape(f) for f in _forms(word))
+    forms = sorted({f for w in (word, *more) for f in _forms(w)})
+    alternatives = "|".join(_pg_regex_escape(f) for f in forms)
     return rf"\m(?:{alternatives})(?:e?s)?\M"
 
 
@@ -224,21 +254,43 @@ async def _text_hits(
         f"""
         with {SEARCH_TEXTS},
         hits as (
-            select exercise_id, bool_or(text = $2) as exact
+            select exercise_id,
+                   bool_or(is_name and text = any($2)) as exact,
+                   bool_or(not is_name and text = any($2)) as exact_alias
             from normalised
             where text ~ all($1)
             group by exercise_id
         )
-        select e.exercise_id, e.name, h.exact,
+        select e.exercise_id, e.name, h.exact, h.exact_alias,
                (select count(*) from exercise_logs l
                 where l.exercise_id = e.exercise_id) as usage_count
         from hits h join exercises e using (exercise_id)
-        order by h.exact desc, usage_count desc, length(e.name), e.name
+        order by h.exact desc, h.exact_alias desc, usage_count desc, length(e.name), e.name
         """,
         [_word_pattern(w) for w in (words or query.words)],
-        query.phrase,
+        _phrase_forms(query.phrase),
     )
-    return [TextHit(r["exercise_id"], r["name"], r["exact"], r["usage_count"]) for r in rows]
+    return [
+        TextHit(r["exercise_id"], r["name"], r["exact"], r["usage_count"], r["exact_alias"])
+        for r in rows
+    ]
+
+
+async def _muscle_hits(conn: asyncpg.Connection, query: Query) -> list[TextHit]:
+    """Exercises with a muscle naming every word, main muscle first, then most logged."""
+    rows = await conn.fetch(
+        """
+        select e.exercise_id, e.name, min(m.position) as position,
+               (select count(*) from exercise_logs l
+                where l.exercise_id = e.exercise_id) as usage_count
+        from exercise_muscles m join exercises e using (exercise_id)
+        where m.muscle ~ all($1)
+        group by e.exercise_id, e.name
+        order by position, usage_count desc, length(e.name), e.name
+        """,
+        [_word_pattern(w, *MUSCLE_GROUPS.get(w, ())) for w in query.words],
+    )
+    return [TextHit(r["exercise_id"], r["name"], False, r["usage_count"]) for r in rows]
 
 
 async def gather(
@@ -254,6 +306,7 @@ async def gather(
         return Candidates(parsed, text=[])
 
     text = await _text_hits(conn, parsed)
+    muscle = await _muscle_hits(conn, parsed) if parsed.muscle_only else []
     corrected: list[str] = []
     fuzzy: list[TextHit] = []
     if not text or everything:
@@ -262,7 +315,7 @@ async def gather(
             fuzzy = await _text_hits(conn, parsed, corrected)
     needs_meaning = not text or parsed.muscle_only or everything
     meaning = await search(parsed.phrase) if search and needs_meaning else []
-    return Candidates(parsed, text, corrected, fuzzy, meaning)
+    return Candidates(parsed, text, muscle, corrected, fuzzy, meaning)
 
 
 def _merge(*groups: list[ExerciseMatch]) -> list[ExerciseMatch]:
@@ -300,10 +353,22 @@ def decide(c: Candidates, t: Thresholds = DEFAULT_THRESHOLDS) -> Decision:
         # Several share it (two Ab Rollouts): ask about just those.
         if exact:
             return Decision(FindResult("ambiguous", _matches(exact)), "exact")
-        # A muscle word matched inside a name: a guess, so ask, with the close meanings.
-        if c.query.muscle_only:
-            options = _merge(_matches(c.text), _matches(meaning))
-            return Decision(FindResult("ambiguous", options), "text")
+        # One of its other names ("rdl", "pec deck"). Ours, not the user's words, so it is
+        # only assumed when nothing else matches; otherwise it is asked, listed first.
+        if any(h.exact_alias for h in c.text):
+            status = "ok" if len(c.text) == 1 else "ambiguous"
+            return Decision(FindResult(status, _matches(c.text)), "exact")
+
+    # A phrase naming only muscles ("forearms") is never assumed to be one exercise, even
+    # if a name contains the word: offer the exercises tagged with it, then name matches.
+    if c.query.muscle_only:
+        options = _merge(_matches(c.muscle), _matches(c.text), _matches(meaning))
+        if options:
+            step: Step = "muscle" if c.muscle else "text" if c.text else "meaning"
+            return Decision(FindResult("ambiguous", options[:MAX_MUSCLE_OPTIONS]), step)
+        return Decision(FindResult("no_rows", []), "none")
+
+    if c.text:
         status = "ok" if len(c.text) == 1 else "ambiguous"
         return Decision(FindResult(status, _matches(c.text)), "text")
 

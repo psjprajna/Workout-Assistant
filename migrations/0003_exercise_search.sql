@@ -13,3 +13,12 @@ CREATE TABLE IF NOT EXISTS exercise_aliases (
 );
 
 CREATE INDEX IF NOT EXISTS exercise_aliases_alias_idx ON exercise_aliases (alias);
+
+-- Muscles each exercise works, main one first (position 0), from the catalog. Lets a
+-- muscle phrase ("something for my back") find exercises whose names never say it.
+CREATE TABLE IF NOT EXISTS exercise_muscles (
+    exercise_id int  NOT NULL REFERENCES exercises (exercise_id) ON DELETE CASCADE,
+    muscle      text NOT NULL,
+    position    int  NOT NULL,
+    PRIMARY KEY (exercise_id, muscle)
+);
