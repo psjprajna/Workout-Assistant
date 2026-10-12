@@ -29,6 +29,14 @@ uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :
 
 The chat page sends every message to the API's `POST /chat`, so uvicorn must be running. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
 
+## Scoring exercise search
+
+```sh
+uv run python scripts/eval_search.py --label my-change --compare evals/results/search-2026-10-12-baseline-name-only.json
+```
+
+Runs `find_exercise` on the labelled phrases in `evals/search_cases.toml`, prints pass rates per kind and every failed case, and saves the run to `evals/results/`.
+
 ## Reading order
 
 1. `docs/explanations.md`: what changed and why, every concept in plain terms, open questions. Start here.

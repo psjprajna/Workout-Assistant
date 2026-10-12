@@ -1,0 +1,461 @@
+# Labelled phrases for find_exercise (scored by scripts/eval_search.py).
+#
+# expected: exercise ids that count as a right answer (any one of them, in the first
+# three options, is a pass). Ids, not names: the database keeps one name per id.
+# Noise cases expect nothing to be offered.
+#
+# Written by Claude from the 154 exercise names in the database, phrased the way people
+# talk in a gym. They are not taken from real chat logs: add real phrasings as you meet
+# them, and keep this file's cases stable so runs stay comparable.
+
+# --- exact_words: control, the text match should already get these -----------------
+
+[[case]]
+phrase = "leg press"
+kind = "exact_words"
+expected = [132, 1309, 1102]  # Leg Press, Machine Leg Press (Wide Stance), Single-Leg Press
+
+[[case]]
+phrase = "plank"
+kind = "exact_words"
+expected = [631]  # Plank
+
+[[case]]
+phrase = "hip thrust"
+kind = "exact_words"
+expected = [386]  # Barbell Hip Thrust
+
+[[case]]
+phrase = "face pull"
+kind = "exact_words"
+expected = [874]  # Cable Rope Face Pull
+
+[[case]]
+phrase = "seated row"
+kind = "exact_words"
+expected = [21, 1041, 700]  # Cable Seated Row, Cable One-Arm Seated Row, Machine Seated Row
+
+[[case]]
+phrase = "goblet squat"
+kind = "exact_words"
+expected = [479]  # Kettlebell Goblet Squat
+
+[[case]]
+phrase = "hammer curl"
+kind = "exact_words"
+expected = [108, 114, 98, 804, 1007]  # Dumbbell (Alternating / Cross Body / Incline) Hammer Curl, Hammer Preacher
+
+[[case]]
+phrase = "russian twist"
+kind = "exact_words"
+expected = [339]  # Weight Plate Russian Twist
+
+[[case]]
+phrase = "ez bar curl"
+kind = "exact_words"
+expected = [1074]  # EZ Bar Curl (Reverse Grip)
+
+# --- plural_typo: plurals, missing spaces, misspellings -------------------------------
+
+[[case]]
+phrase = "bicep curls"
+kind = "plural_typo"
+expected = [100, 116, 102, 275, 112]  # Dumbbell / Alternating / Cable / Wide Grip Bicep Curl, Barbell Curl
+
+[[case]]
+phrase = "benchpress"
+kind = "plural_typo"
+expected = [2, 26]  # Barbell Bench Press, Dumbbell Bench Press
+
+[[case]]
+phrase = "skullcrushers"
+kind = "plural_typo"
+expected = [1187, 223]  # Barbell Reverse Grip Skullcrusher, EZ Bar Decline Close Grip Skull Crusher
+
+[[case]]
+phrase = "pullups"
+kind = "plural_typo"
+expected = [1262, 1264]  # Machine Assisted Pull Up, Machine Assisted Pull-Up (Hammer Grip)
+
+[[case]]
+phrase = "hip thrusts"
+kind = "plural_typo"
+expected = [386]  # Barbell Hip Thrust
+
+[[case]]
+phrase = "face pulls"
+kind = "plural_typo"
+expected = [874]  # Cable Rope Face Pull
+
+[[case]]
+phrase = "lateral raises"
+kind = "plural_typo"
+expected = [32, 19, 1127]  # Dumbbell Lateral Raise, Cable Lateral Raise, Cable One-Arm Lateral Raise
+
+[[case]]
+phrase = "lat pulldowns"
+kind = "plural_typo"
+expected = [86, 696, 1268]  # Wide Grip Lat Pulldown, Cable Grip Lat Pulldown (Narrow Grip), Iso Lateral Wide Pulldown
+
+[[case]]
+phrase = "dumbell rows"
+kind = "plural_typo"
+expected = [88]  # Dumbbell Bent-Over Row
+
+[[case]]
+phrase = "romanian deadlifts"
+kind = "plural_typo"
+expected = [199, 1433]  # Barbell Romanian Deadlift, Dumbbell Romanian Deadlift
+
+[[case]]
+phrase = "tricep pushdowns"
+kind = "plural_typo"
+expected = [159, 1334]  # Cable Rope Triceps Pushdown, Cable One-Arm Tricep Pushdown
+
+[[case]]
+phrase = "calf raises"
+kind = "plural_typo"
+expected = [145, 143, 144, 142, 1242]  # Standing / Barbell Standing / Seated / Dumbbell / Smith Single-Leg Calf Raise
+
+[[case]]
+phrase = "squats"
+kind = "plural_typo"
+expected = [12, 135]  # Barbell Squat, Smith Machine Squat
+
+[[case]]
+phrase = "lunges"
+kind = "plural_typo"
+expected = [128, 136, 784]  # Barbell Lunge, Dumbbell Lunge, Smith Machine Lunge
+
+[[case]]
+phrase = "hammer curls"
+kind = "plural_typo"
+expected = [108, 114]  # Dumbbell Hammer Curl, Dumbbell Alternating Hammer Curl
+
+[[case]]
+phrase = "t-bar row"
+kind = "plural_typo"
+expected = [52]  # T Bar Row
+
+[[case]]
+phrase = "push ups"
+kind = "plural_typo"
+expected = [47, 1055]  # Push Up, Bench Push-Up
+
+[[case]]
+phrase = "preacher curls"
+kind = "plural_typo"
+expected = [271, 109, 1007]  # Preacher Curl Machine, Dumbbell One-Arm Preacher Curl, Hammer Preacher
+
+[[case]]
+phrase = "split squats"
+kind = "plural_typo"
+expected = [205, 1346]  # Barbell Bulgarian Split Squat, Dumbbell Bulgarian Split Squat
+
+[[case]]
+phrase = "good mornings"
+kind = "plural_typo"
+expected = [7]  # Barbell Good Morning
+
+[[case]]
+phrase = "step ups"
+kind = "plural_typo"
+expected = [1225]  # Bodyweight Step-Up
+
+# --- abbreviation: gym shorthand -------------------------------------------------------
+
+[[case]]
+phrase = "rdl"
+kind = "abbreviation"
+expected = [199, 1433]  # Barbell Romanian Deadlift, Dumbbell Romanian Deadlift
+
+[[case]]
+phrase = "rdls"
+kind = "abbreviation"
+expected = [199, 1433]  # Barbell Romanian Deadlift, Dumbbell Romanian Deadlift
+
+[[case]]
+phrase = "db curl"
+kind = "abbreviation"
+expected = [100, 116]  # Dumbbell Bicep Curl, Dumbbell Alternating Bicep Curl
+
+[[case]]
+phrase = "db bench"
+kind = "abbreviation"
+expected = [26]  # Dumbbell Bench Press
+
+[[case]]
+phrase = "incline db press"
+kind = "abbreviation"
+expected = [31]  # Dumbbell Incline Bench Press
+
+[[case]]
+phrase = "bb row"
+kind = "abbreviation"
+expected = [3]  # Barbell Bent-Over Row
+
+[[case]]
+phrase = "ohp"
+kind = "abbreviation"
+expected = [48, 46]  # Dumbbell Shoulder Press, Machine Shoulder Press
+
+[[case]]
+phrase = "bss"
+kind = "abbreviation"
+expected = [205, 1346]  # Barbell Bulgarian Split Squat, Dumbbell Bulgarian Split Squat
+
+[[case]]
+phrase = "db press"
+kind = "abbreviation"
+expected = [26, 48]  # Dumbbell Bench Press, Dumbbell Shoulder Press
+
+# --- slang_synonym: other names for the same exercise ---------------------------------
+
+[[case]]
+phrase = "chest press"
+kind = "slang_synonym"
+expected = [2, 26, 178, 853]  # Barbell / Dumbbell Bench Press, Machine / Leverage Incline Chest Press
+
+[[case]]
+phrase = "flat bench"
+kind = "slang_synonym"
+expected = [2, 26]  # Barbell Bench Press, Dumbbell Bench Press
+
+[[case]]
+phrase = "pec deck"
+kind = "slang_synonym"
+expected = [45]  # Machine Fly
+
+[[case]]
+phrase = "cable flys"
+kind = "slang_synonym"
+expected = [14, 1057, 1279]  # Cable High Cross-Over, Cable Mid Chest Crossover, Cable Decline Chest Fly
+
+[[case]]
+phrase = "close grip pulldown"
+kind = "slang_synonym"
+expected = [696]  # Cable Grip Lat Pulldown (Narrow Grip)
+
+[[case]]
+phrase = "assisted pullups"
+kind = "slang_synonym"
+expected = [1262, 1264]  # Machine Assisted Pull Up, Machine Assisted Pull-Up (Hammer Grip)
+
+[[case]]
+phrase = "assisted chins"
+kind = "slang_synonym"
+expected = [1263]  # Machine Assisted Chin-Up
+
+[[case]]
+phrase = "abductor machine"
+kind = "slang_synonym"
+expected = [216]  # Machine Hip Abduction
+
+[[case]]
+phrase = "inner thigh machine"
+kind = "slang_synonym"
+expected = [217]  # Machine Hip Adduction
+
+[[case]]
+phrase = "outer thigh machine"
+kind = "slang_synonym"
+expected = [216]  # Machine Hip Abduction
+
+[[case]]
+phrase = "hamstring curl"
+kind = "slang_synonym"
+expected = [160]  # Prone Leg Curl
+
+[[case]]
+phrase = "lying leg curl"
+kind = "slang_synonym"
+expected = [160]  # Prone Leg Curl
+
+[[case]]
+phrase = "quad extension"
+kind = "slang_synonym"
+expected = [130]  # Leg Extension
+
+[[case]]
+phrase = "skull crushers"
+kind = "slang_synonym"
+expected = [1187, 223]  # Barbell Reverse Grip Skullcrusher, EZ Bar Decline Close Grip Skull Crusher
+
+[[case]]
+phrase = "french press"
+kind = "slang_synonym"
+expected = [247, 230, 155]  # Dumbbell Tricep Extension, Dumbbell Seated One-Arm Tricep Ext., Cable Rope Overhead Tricep Ext.
+
+[[case]]
+phrase = "glute bridge"
+kind = "slang_synonym"
+expected = [194, 386]  # Bridge, Barbell Hip Thrust
+
+[[case]]
+phrase = "hyperextensions"
+kind = "slang_synonym"
+expected = [92]  # Back Hyperextension
+
+[[case]]
+phrase = "shrugs"
+kind = "slang_synonym"
+expected = [11, 886]  # Barbell Shrug, Leverage Machine Shrug
+
+[[case]]
+phrase = "military press"
+kind = "slang_synonym"
+expected = [48, 46]  # Dumbbell Shoulder Press, Machine Shoulder Press
+
+[[case]]
+phrase = "rear delt fly"
+kind = "slang_synonym"
+expected = [1106, 1107, 441, 878]  # Cable / Dumbbell Bent-Over / Dumbbell Reverse Fly(e), Machine Reverse Fly
+
+[[case]]
+phrase = "reverse pec deck"
+kind = "slang_synonym"
+expected = [878]  # Machine Reverse Fly
+
+[[case]]
+phrase = "spin bike"
+kind = "slang_synonym"
+expected = [312, 318]  # Indoor Cycling, Stationary Bike
+
+[[case]]
+phrase = "jogging"
+kind = "slang_synonym"
+expected = [321]  # Treadmill Running
+
+[[case]]
+phrase = "cross trainer"
+kind = "slang_synonym"
+expected = [310]  # Elliptical Training
+
+[[case]]
+phrase = "assault bike"
+kind = "slang_synonym"
+expected = [57]  # Air Bike
+
+[[case]]
+phrase = "wall sit"
+kind = "slang_synonym"
+expected = [1209]  # Bodyweight Wall Squat
+
+[[case]]
+phrase = "sit ups"
+kind = "slang_synonym"
+expected = [77, 78]  # Crunches, Decline Crunch
+
+[[case]]
+phrase = "captain's chair"
+kind = "slang_synonym"
+expected = [674, 1273, 690]  # Parallel Bar Hip Flexion, Parallel Bar Leg Raise, Hanging Knee Raise
+
+[[case]]
+phrase = "tricep dips"
+kind = "slang_synonym"
+expected = [24, 229, 1261]  # Dip, Bench Dip, Machine Assisted Dip
+
+[[case]]
+phrase = "ab wheel"
+kind = "slang_synonym"
+expected = [66, 294]  # Barbell Ab Rollout (both)
+
+# --- muscle_goal: the user names a muscle, not an exercise ------------------------------
+
+[[case]]
+phrase = "rear delts"
+kind = "muscle_goal"
+expected = [1106, 1107, 441, 878, 38]  # reverse flys, Dumbbell Rear Deltoid Row
+
+[[case]]
+phrase = "calves"
+kind = "muscle_goal"
+expected = [145, 143, 144, 142, 1242, 1254, 140]  # calf raises and presses
+
+[[case]]
+phrase = "something for triceps"
+kind = "muscle_goal"
+expected = [225, 1334, 155, 159, 1164, 230, 247, 777, 1187, 223, 24, 229, 1261, 4]  # tricep moves, dips, close grip bench
+
+[[case]]
+phrase = "biceps"
+kind = "muscle_goal"
+expected = [100, 116, 102, 275, 112, 107, 106, 109, 271, 108, 114]  # curls
+
+[[case]]
+phrase = "glutes"
+kind = "muscle_goal"
+expected = [386, 194, 387, 1313, 216]  # hip thrust, bridge, kickbacks, abduction
+
+[[case]]
+phrase = "abs"
+kind = "muscle_goal"
+expected = [77, 78, 56, 675, 61, 690, 44, 73, 631, 198, 339, 677, 66, 294]  # crunches, raises, plank, twists, rollouts
+
+[[case]]
+phrase = "hamstrings"
+kind = "muscle_goal"
+expected = [160, 199, 1433, 93, 7]  # leg curl, RDLs, deadlift, good morning
+
+[[case]]
+phrase = "forearms"
+kind = "muscle_goal"
+expected = [126, 119, 117, 1086, 123, 118, 111, 104, 285, 1074]  # wrist curls, reverse curls
+
+[[case]]
+phrase = "upper chest"
+kind = "muscle_goal"
+expected = [8, 31, 178, 853, 14]  # incline presses, high cross-over
+
+[[case]]
+phrase = "lats"
+kind = "muscle_goal"
+expected = [86, 696, 1268, 375]  # pulldowns, pullover
+
+[[case]]
+phrase = "traps"
+kind = "muscle_goal"
+expected = [11, 886, 13]  # shrugs, upright row
+
+# --- noise: nothing should be offered ------------------------------------------------
+
+[[case]]
+phrase = "zzz"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "asdfgh"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "leg day"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "my workout"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "how are you"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "what should I eat"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "tomorrow"
+kind = "noise"
+expected = []
+
+[[case]]
+phrase = "push day"
+kind = "noise"
+expected = []
