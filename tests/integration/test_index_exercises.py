@@ -104,7 +104,8 @@ async def test_embedder_returning_wrong_count_fails(conn, seeded, qdrant):
 
 async def test_other_names_and_description_get_their_own_points(conn, seeded, qdrant):
     await conn.execute(
-        "insert into exercise_aliases (exercise_id, alias, source) values (2, 'flat bench', 'catalog')"
+        "insert into exercise_aliases (exercise_id, alias, source) "
+        "values (2, 'flat bench', 'catalog')"
     )
     await conn.executemany(
         "insert into exercise_muscles (exercise_id, muscle, position) values ($1, $2, $3)",
@@ -125,7 +126,8 @@ async def test_other_names_and_description_get_their_own_points(conn, seeded, qd
 
 async def test_removed_alias_loses_its_point(conn, seeded, qdrant):
     await conn.execute(
-        "insert into exercise_aliases (exercise_id, alias, source) values (2, 'flat bench', 'catalog')"
+        "insert into exercise_aliases (exercise_id, alias, source) "
+        "values (2, 'flat bench', 'catalog')"
     )
     await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
     await conn.execute("delete from exercise_aliases")
