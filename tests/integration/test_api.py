@@ -17,8 +17,8 @@ async def client(seeded, test_database_url):
             yield c
 
 
-async def _chat(client, session_id, message):
-    return await client.post("/chat", json={"session_id": session_id, "message": message})
+async def _chat(client, chat_id, message):
+    return await client.post("/chat", json={"chat_id": chat_id, "message": message})
 
 
 async def test_health(client):
@@ -50,7 +50,7 @@ async def test_empty_message_is_rejected(client):
     assert r.status_code == 422
 
 
-async def test_missing_session_id_is_rejected(client):
+async def test_missing_chat_id_is_rejected(client):
     r = await client.post("/chat", json={"message": "hi"})
     assert r.status_code == 422
 
@@ -75,3 +75,62 @@ async def test_chat_page_function_talks_to_the_real_endpoint(client):
 
     reply = await send_message(client, "page", "last time I did bench press?")
     assert "Which one" in reply
+
+
+# --- /chats: the chat page's sidebar -------------------------------------------------
+
+
+async def _saved_chat(conn, chat_id, turns=2):
+    from workout_agent.sessions.chat_store import save_turn
+
+    for n in range(1, turns + 1):
+        await save_turn(conn, chat_id, n, f"q{n}", f"a{n}", [], [], f"title {chat_id}", True)
+
+
+async def test_list_chats(conn, client):
+    await _saved_chat(conn, "x")
+    await _saved_chat(conn, "y")
+
+    r = await client.get("/chats", params={"limit": 1})
+
+    assert r.status_code == 200
+    assert [c["chat_id"] for c in r.json()] == ["y"]
+    r = await client.get("/chats", params={"before": r.json()[0]["updated_at"]})
+    assert [c["chat_id"] for c in r.json()] == ["x"]
+
+
+async def test_get_chat_returns_its_turns(conn, client):
+    await _saved_chat(conn, "x")
+
+    r = await client.get("/chats/x")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "title x"
+    assert [(t["user_text"], t["reply_text"]) for t in body["turns"]] == [
+        ("q1", "a1"),
+        ("q2", "a2"),
+    ]
+
+
+async def test_unknown_chat_is_404(client):
+    assert (await client.get("/chats/nope")).status_code == 404
+    patch = await client.patch("/chats/nope", json={"title": "t"})
+    assert patch.status_code == 404
+
+
+async def test_rename_chat(conn, client):
+    await _saved_chat(conn, "x")
+    r = await client.patch("/chats/x", json={"title": "Chest day"})
+    assert r.status_code == 204
+    assert (await client.get("/chats/x")).json()["title"] == "Chest day"
+
+
+async def test_delete_chat_removes_its_turns(conn, client):
+    await _saved_chat(conn, "x")
+
+    r = await client.delete("/chats/x")
+
+    assert r.status_code == 204
+    assert (await client.get("/chats/x")).status_code == 404
+    assert await conn.fetchval("select count(*) from chat_turns where chat_id = 'x'") == 0

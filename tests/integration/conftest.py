@@ -69,7 +69,9 @@ async def conn():
     connection = await asyncpg.connect(_with_database(base_url, TEST_DB))
     try:
         await apply_migrations(connection)
-        await connection.execute("truncate sets, exercise_logs, exercises cascade")
+        await connection.execute(
+            "truncate chat_turns, chats, sets, exercise_logs, exercises cascade"
+        )
         yield connection
     finally:
         await connection.close()

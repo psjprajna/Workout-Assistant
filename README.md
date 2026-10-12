@@ -29,6 +29,14 @@ uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :
 
 The chat page sends every message to the API's `POST /chat`, so uvicorn must be running. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
 
+Chainlit needs `CHAINLIT_AUTH_SECRET` in `.env` (it signs the session of the one built-in user, so there is no login form). Create it once:
+
+```sh
+uv run chainlit create-secret    # copy the CHAINLIT_AUTH_SECRET=... line into .env
+```
+
+Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar.
+
 ## Exercise search
 
 `find_exercise` tidies the phrase ("db" -> dumbbell), stops phrases about a day or workout, matches whole words against names and their other names, answers muscle phrases from muscle tags, fixes misspelt words, and only then searches by meaning in Qdrant. Other names, muscles and equipment live in `config/exercise_catalog.toml`.

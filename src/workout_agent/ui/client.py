@@ -7,10 +7,10 @@ Failures come back as reply text, so the page always has something to show.
 import httpx
 
 
-async def send_message(client: httpx.AsyncClient, session_id: str, message: str) -> str:
+async def send_message(client: httpx.AsyncClient, chat_id: str, message: str) -> str:
     try:
         response = await client.post(
-            "/chat", json={"session_id": session_id, "message": message}
+            "/chat", json={"chat_id": chat_id, "message": message}
         )
         response.raise_for_status()
     except httpx.HTTPStatusError as e:

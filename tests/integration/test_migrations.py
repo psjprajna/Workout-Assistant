@@ -9,7 +9,7 @@ async def test_tables_exist_after_migration(conn):
         "where table_schema = 'public'"
     )
     names = {r["table_name"] for r in rows}
-    assert {"exercises", "exercise_logs", "sets"} <= names
+    assert {"exercises", "exercise_logs", "sets", "chats", "chat_turns"} <= names
 
 
 async def test_apply_migrations_twice_is_safe(conn):

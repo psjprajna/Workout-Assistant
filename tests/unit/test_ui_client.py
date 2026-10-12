@@ -13,7 +13,7 @@ def _client():
     return httpx.AsyncClient(base_url=API_URL)
 
 
-async def test_posts_session_and_message_and_returns_the_reply(httpx_mock):
+async def test_posts_chat_id_and_message_and_returns_the_reply(httpx_mock):
     httpx_mock.add_response(url=f"{API_URL}/chat", json={"reply": "Which one? 1. Bench Press"})
 
     async with _client() as client:
@@ -23,7 +23,7 @@ async def test_posts_session_and_message_and_returns_the_reply(httpx_mock):
     sent = httpx_mock.get_request()
     assert sent.method == "POST"
     assert json.loads(sent.content) == {
-        "session_id": "s1",
+        "chat_id": "s1",
         "message": "last time I did bench press?",
     }
 

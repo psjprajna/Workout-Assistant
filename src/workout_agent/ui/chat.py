@@ -1,26 +1,72 @@
 """The chat page: uv run chainlit run src/workout_agent/ui/chat.py --port 8001
 
 Every message goes to the running API's POST /chat (start uvicorn first), so the page,
-the API and the agent are all in the path. Each browser chat uses its own session id.
+the API and the agent are all in the path. Each chat is a Chainlit thread; its id is the
+chat id the API saves turns under, so past chats show in the sidebar and can be reopened
+(ui/data_layer.py). There is one user, logged in automatically: no login form.
+Chainlit reads CHAINLIT_AUTH_SECRET from .env; create it with `uv run chainlit create-secret`.
 """
 
 import chainlit as cl
 import httpx
+from starlette.datastructures import Headers
 
+from workout_agent.sessions.titles import chat_title
 from workout_agent.settings import Settings
 from workout_agent.ui.client import send_message
+from workout_agent.ui.data_layer import USER, ApiDataLayer
+
+
+def _new_client() -> httpx.AsyncClient:
+    # Agent turns with several tool calls can take longer than httpx's 5 s default.
+    return httpx.AsyncClient(base_url=Settings().api_url, timeout=60)
+
+
+# Chainlit creates the data layer once per process.
+_data_layer = ApiDataLayer(_new_client())
+
+
+@cl.data_layer
+def data_layer() -> ApiDataLayer:
+    return _data_layer
+
+
+@cl.header_auth_callback
+async def auth(headers: Headers) -> cl.User:
+    return cl.User(identifier=USER)  # always succeeds, so no login form is shown
+
+
+@cl.set_starters
+async def starters(user: cl.User | None = None) -> list[cl.Starter]:
+    return [
+        cl.Starter(label="Last bench press", message="What did I lift last time on bench press?"),
+        cl.Starter(label="Last barbell curl", message="When did I last do barbell curls?"),
+        cl.Starter(label="Something for back", message="What back exercises have I done?"),
+    ]
 
 
 @cl.on_chat_start
 async def start() -> None:
-    # Agent turns with several tool calls can take longer than httpx's 5 s default.
-    cl.user_session.set("client", httpx.AsyncClient(base_url=Settings().api_url, timeout=60))
+    # No welcome message: a bot message would save an empty chat to the sidebar.
+    cl.user_session.set("client", _new_client())
+
+
+@cl.on_chat_resume
+async def resume(thread: cl.types.ThreadDict) -> None:
+    # Chainlit shows the old messages from the data layer; the API has the model history.
+    cl.user_session.set("client", _new_client())
 
 
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     client: httpx.AsyncClient = cl.user_session.get("client")  # type: ignore[assignment]
-    reply = await send_message(client, cl.context.session.id, message.content)
+    # thread_id stays the same when a chat is reopened; session.id changes per connection.
+    thread_id = cl.context.session.thread_id
+    _data_layer.mark_pending(thread_id, chat_title(message.content, [])[0])
+    try:
+        reply = await send_message(client, thread_id, message.content)
+    finally:
+        _data_layer.clear_pending(thread_id)
     await cl.Message(content=reply).send()
 
 

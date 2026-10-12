@@ -23,4 +23,6 @@ app = create_app(
     agent=build_agent(settings),
     qdrant_url=settings.qdrant_url,
     embedder=embedder,
+    history_turns=settings.history_turns,
+    history_full_tool_turns=settings.history_full_tool_turns,
 )
