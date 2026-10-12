@@ -7,14 +7,22 @@ scripts/eval_search.py runs it against the real database and saves the results.
 
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import asyncpg
 
 from workout_agent.embeddings.search import ScoredExercise
-from workout_agent.tools.find_exercise import FindResult, Searcher, find_exercise
+from workout_agent.tools.find_exercise import (
+    Candidates,
+    FindResult,
+    Searcher,
+    Step,
+    Thresholds,
+    decide,
+    gather,
+)
 
 KINDS = (
     "exact_words",  # control: the text match should already find these
@@ -24,8 +32,6 @@ KINDS = (
     "muscle_goal",  # "rear delts", "something for triceps"
     "noise",  # nothing should be offered
 )
-
-Step = Literal["text", "meaning", "none"]
 
 # dev: cases used to tune the catalog and cutoffs. holdout: written before the catalog
 # and never tuned on, so they show whether gains carry over to new phrasings.
@@ -60,7 +66,7 @@ class CaseResult:
     kind: str
     split: str
     expected: list[int]
-    step: Step  # which part of find_exercise produced the options
+    step: Step  # which stage of find_exercise produced the answer
     status: str
     options: list[Option]
     hit_at_1: bool  # a right answer is the first option
@@ -71,6 +77,8 @@ class CaseResult:
     raw: list[RawHit]  # Qdrant's top hits before MIN_SCORE, best first
     best_right_score: float | None
     best_wrong_score: float | None
+    # What every stage found, so scripts/sweep_search.py can replay decide() offline.
+    candidates: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -131,19 +139,11 @@ def load_cases(path: Path) -> list[Case]:
 
 
 def score_case(
-    case: Case, result: FindResult, searched: bool, raw: list[ScoredExercise]
+    case: Case, result: FindResult, step: Step, raw: list[ScoredExercise]
 ) -> CaseResult:
-    """Score one find_exercise result. `searched`: the meaning fallback was called."""
+    """Score one find_exercise result. `step`: the stage that produced it."""
     expected = set(case.expected)
     ids = [m.exercise_id for m in result.matches]
-
-    step: Step
-    if not ids:
-        step = "none"
-    elif searched:
-        step = "meaning"
-    else:
-        step = "text"
 
     hit_at_1 = any(i in expected for i in ids[:1])
     hit_at_3 = any(i in expected for i in ids[:3])
@@ -173,24 +173,24 @@ def score_case(
 async def run_cases(
     conn: asyncpg.Connection, cases: list[Case], search: Searcher | None
 ) -> list[CaseResult]:
-    """Run find_exercise on every case.
+    """Run find_exercise's stages on every case, recording every stage's candidates.
 
-    `search` is called once per phrase up front for the raw scores; find_exercise then
-    gets that same answer, so each phrase costs one embedding call.
+    gather(everything=True) runs every stage even when an earlier one answered, so the
+    raw scores are kept; decide() then answers exactly as find_exercise would.
     """
     results = []
     for case in cases:
-        raw = await search(case.phrase) if search is not None else []
-        searched = False
-
-        async def recorded(_query: str, raw: list[ScoredExercise] = raw) -> list[ScoredExercise]:
-            nonlocal searched
-            searched = True
-            return raw
-
-        result = await find_exercise(conn, case.phrase, recorded if search else None)
-        results.append(score_case(case, result, searched, raw))
+        candidates = await gather(conn, case.phrase, search, everything=True)
+        results.append(score_candidates(case, candidates))
     return results
+
+
+def score_candidates(case: Case, candidates: Candidates, **thresholds: Any) -> CaseResult:
+    """decide() on saved candidates, then score; thresholds override the defaults."""
+    decision = decide(candidates, Thresholds(**thresholds))
+    result = score_case(case, decision.result, decision.step, candidates.meaning)
+    result.candidates = asdict(candidates)
+    return result
 
 
 def summarize(results: list[CaseResult]) -> dict[str, Tally]:
