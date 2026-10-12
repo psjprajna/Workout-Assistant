@@ -9,12 +9,36 @@ from datetime import date
 from decimal import Decimal
 
 import asyncpg
+import httpx
 import pytest
+from pydantic_ai.exceptions import ModelHTTPError
 
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.settings import Settings
 
 TEST_DB = "workout_test"
+
+# OpenRouter answers that mean "your account can't run this", not "the code is wrong".
+_OPENROUTER_SKIPS = {
+    402: "OpenRouter account is out of credits (HTTP 402)",
+    404: "no OpenRouter provider matches the model and data policy (HTTP 404)",
+}
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item):
+    """Skip, not fail, an `llm` test when OpenRouter refuses for account reasons."""
+    try:
+        return (yield)
+    except (ModelHTTPError, httpx.HTTPStatusError) as error:
+        status = (
+            error.status_code
+            if isinstance(error, ModelHTTPError)
+            else error.response.status_code
+        )
+        if item.get_closest_marker("llm") and status in _OPENROUTER_SKIPS:
+            pytest.skip(_OPENROUTER_SKIPS[status])
+        raise
 
 
 def _with_database(url: str, name: str) -> str:
