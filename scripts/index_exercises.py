@@ -12,6 +12,8 @@ import sys
 import asyncpg
 from qdrant_client import AsyncQdrantClient
 
+from workout_agent.db.migrate import apply_migrations
+from workout_agent.embeddings.cache import cached
 from workout_agent.embeddings.index import COLLECTION, index_exercises
 from workout_agent.embeddings.openrouter import MODEL_NAME, embed
 from workout_agent.settings import Settings
@@ -20,10 +22,12 @@ from workout_agent.settings import Settings
 async def main() -> int:
     settings = Settings()
 
-    async def embedder(texts: list[str]) -> list[list[float]]:
+    async def fetch(texts: list[str]) -> list[list[float]]:
         return await embed(settings, texts)
 
     conn = await asyncpg.connect(settings.database_url)
+    await apply_migrations(conn)
+    embedder = cached(conn, MODEL_NAME, fetch)
     qdrant = AsyncQdrantClient(url=settings.qdrant_url)
     try:
         points = await index_exercises(conn, qdrant, embedder)
