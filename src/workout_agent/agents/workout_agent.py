@@ -32,6 +32,8 @@ INSTRUCTIONS = (
     "call get_last_session with that option's exercise_id. "
     "An 'ambiguous' result can also be close matches by meaning when no name matched "
     "the words: offer them the same way, as 'Did you mean' and the numbered list. "
+    "'ambiguous' with a single option is still a question: ask 'Did you mean ...?' "
+    "and wait; never call get_last_session for it until the user says yes. "
 )
 
 

@@ -17,6 +17,8 @@ from workout_agent.embeddings.search import ScoredExercise
 from workout_agent.tools.find_exercise import (
     Candidates,
     FindResult,
+    Query,
+    TextHit,
     Searcher,
     Step,
     Thresholds,
@@ -208,6 +210,52 @@ def summarize(results: list[CaseResult]) -> dict[str, Tally]:
             tally.false_offers += r.false_offer
             tally.steps[r.step] = tally.steps.get(r.step, 0) + 1
     return {kind: tally for kind, tally in tallies.items() if tally.cases}
+
+
+def candidates_from_dict(data: Mapping[str, Any]) -> Candidates:
+    """Rebuild Candidates saved in a results file (CaseResult.candidates)."""
+    return Candidates(
+        query=Query(**data["query"]),
+        text=[TextHit(**h) for h in data["text"]],
+        muscle=[TextHit(**h) for h in data.get("muscle", [])],
+        corrected=list(data.get("corrected", [])),
+        fuzzy=[TextHit(**h) for h in data.get("fuzzy", [])],
+        meaning=[ScoredExercise(**h) for h in data.get("meaning", [])],
+    )
+
+
+def case_from_dict(data: Mapping[str, Any]) -> Case:
+    return Case(data["phrase"], data["kind"], tuple(data["expected"]), data.get("split", "dev"))
+
+
+@dataclass
+class MeaningOnly:
+    """Qdrant alone, ignoring the text stages: is a right answer among its raw top hits?"""
+
+    cases: int = 0  # phrases that expect an exercise
+    hit_at_1: int = 0
+    hit_at_3: int = 0
+    noise_max: float = 0.0  # highest score any noise phrase reached
+    right_min: float | None = None  # lowest best-right score among hit@3 phrases
+
+
+def meaning_only(results: list[CaseResult], split: str | None = None) -> MeaningOnly:
+    """Score the raw meaning hits saved with each result (all splits, or one)."""
+    m = MeaningOnly()
+    for r in results:
+        if split is not None and r.split != split:
+            continue
+        ids = [h.exercise_id for h in r.raw]
+        if not r.expected:
+            m.noise_max = max([m.noise_max, *(h.score for h in r.raw[:1])])
+            continue
+        m.cases += 1
+        m.hit_at_1 += any(i in r.expected for i in ids[:1])
+        hit3 = any(i in r.expected for i in ids[:3])
+        m.hit_at_3 += hit3
+        if hit3 and r.best_right_score is not None:
+            m.right_min = min(r.best_right_score, m.right_min or r.best_right_score)
+    return m
 
 
 def compare(old: Mapping[str, bool], new: Mapping[str, bool]) -> tuple[list[str], list[str]]:

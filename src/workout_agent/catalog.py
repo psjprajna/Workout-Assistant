@@ -1,7 +1,7 @@
 """The exercise catalog (config/exercise_catalog.toml): other names, muscles, equipment.
 
 parse_catalog() checks the file's shape; check_catalog() checks it against the exercises
-in the database; store_catalog() writes aliases and muscles for find_exercise. Aliases
+in the database; store_catalog() writes aliases, muscles and equipment. Aliases
 are stored tidied the way find_exercise tidies a phrase ("bb bench" -> "barbell bench").
 """
 
@@ -104,10 +104,11 @@ def check_catalog(catalog: Mapping[int, CatalogEntry], names: Mapping[int, str])
 
 
 async def store_catalog(conn: asyncpg.Connection, catalog: Mapping[int, CatalogEntry]) -> None:
-    """Replace the catalog's aliases and all muscles, in one transaction."""
+    """Replace the catalog's aliases, muscles and equipment, in one transaction."""
     async with conn.transaction():
         await conn.execute("delete from exercise_aliases where source = 'catalog'")
         await conn.execute("delete from exercise_muscles")
+        await conn.execute("delete from exercise_details")
         await conn.executemany(
             "insert into exercise_aliases (exercise_id, alias, source) values ($1, $2, 'catalog')",
             [(e.exercise_id, a) for e in catalog.values() for a in e.aliases],
@@ -115,4 +116,8 @@ async def store_catalog(conn: asyncpg.Connection, catalog: Mapping[int, CatalogE
         await conn.executemany(
             "insert into exercise_muscles (exercise_id, muscle, position) values ($1, $2, $3)",
             [(e.exercise_id, m, p) for e in catalog.values() for p, m in enumerate(e.muscles)],
+        )
+        await conn.executemany(
+            "insert into exercise_details (exercise_id, equipment) values ($1, $2)",
+            [(e.exercise_id, e.equipment) for e in catalog.values()],
         )

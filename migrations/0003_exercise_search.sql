@@ -22,3 +22,9 @@ CREATE TABLE IF NOT EXISTS exercise_muscles (
     position    int  NOT NULL,
     PRIMARY KEY (exercise_id, muscle)
 );
+
+-- Equipment, from the catalog; goes into the description the Qdrant index embeds.
+CREATE TABLE IF NOT EXISTS exercise_details (
+    exercise_id int  PRIMARY KEY REFERENCES exercises (exercise_id) ON DELETE CASCADE,
+    equipment   text NOT NULL
+);

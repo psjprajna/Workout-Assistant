@@ -33,8 +33,15 @@ async def qdrant():
 
 
 async def _points(qdrant: AsyncQdrantClient) -> dict[int, str]:
+    """exercise_id -> name, over every point (several points per exercise collapse)."""
     points, _ = await qdrant.scroll(TEST_COLLECTION, limit=100)
-    return {int(p.id): p.payload["name"] for p in points if p.payload}
+    return {p.payload["exercise_id"]: p.payload["name"] for p in points if p.payload}
+
+
+async def _texts(qdrant: AsyncQdrantClient) -> set[tuple[int, str, str]]:
+    points, _ = await qdrant.scroll(TEST_COLLECTION, limit=100)
+    return {(p.payload["exercise_id"], p.payload["kind"], p.payload["text"])
+            for p in points if p.payload}
 
 
 async def _vector_size(qdrant: AsyncQdrantClient) -> int:
@@ -45,7 +52,7 @@ async def _vector_size(qdrant: AsyncQdrantClient) -> int:
 async def test_one_point_per_exercise_with_size_from_embedder(conn, seeded, qdrant):
     count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
 
-    assert count == 2
+    assert (count.exercises, count.points) == (2, 2)
     assert await _points(qdrant) == {
         2: "Barbell Bench Press",
         8: "Barbell Incline Bench Press",
@@ -57,7 +64,7 @@ async def test_running_twice_makes_no_duplicates(conn, seeded, qdrant):
     await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
     count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
 
-    assert count == 2
+    assert (count.exercises, count.points) == (2, 2)
     assert set(await _points(qdrant)) == {2, 8}
 
 
@@ -68,7 +75,7 @@ async def test_removed_exercise_loses_its_point(conn, seeded, qdrant):
 
     count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
 
-    assert count == 1
+    assert (count.exercises, count.points) == (1, 1)
     assert set(await _points(qdrant)) == {2}
 
 
@@ -76,14 +83,14 @@ async def test_new_vector_size_recreates_collection(conn, seeded, qdrant):
     await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
     count = await index_exercises(conn, qdrant, fake_embedder(7), TEST_COLLECTION)
 
-    assert count == 2
+    assert count.exercises == 2
     assert await _vector_size(qdrant) == 7
 
 
 async def test_empty_table_indexes_nothing(conn, qdrant):
     count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
 
-    assert count == 0
+    assert (count.exercises, count.points) == (0, 0)
     assert not await qdrant.collection_exists(TEST_COLLECTION)
 
 
@@ -91,5 +98,39 @@ async def test_embedder_returning_wrong_count_fails(conn, seeded, qdrant):
     async def short(texts: list[str]) -> list[list[float]]:
         return [[1.0, 2.0]]
 
-    with pytest.raises(RuntimeError, match="1 vectors for 2 names"):
+    with pytest.raises(RuntimeError, match="1 vectors for 2 texts"):
         await index_exercises(conn, qdrant, short, TEST_COLLECTION)
+
+
+async def test_other_names_and_description_get_their_own_points(conn, seeded, qdrant):
+    await conn.execute(
+        "insert into exercise_aliases (exercise_id, alias, source) values (2, 'flat bench', 'catalog')"
+    )
+    await conn.executemany(
+        "insert into exercise_muscles (exercise_id, muscle, position) values ($1, $2, $3)",
+        [(2, "chest", 0), (2, "triceps", 1)],
+    )
+    await conn.execute("insert into exercise_details values (2, 'barbell')")
+
+    count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
+
+    assert (count.exercises, count.points) == (2, 4)
+    assert await _texts(qdrant) == {
+        (2, "name", "Barbell Bench Press"),
+        (2, "alias", "flat bench"),
+        (2, "description", "Barbell Bench Press: works the chest, triceps; equipment: barbell."),
+        (8, "name", "Barbell Incline Bench Press"),
+    }
+
+
+async def test_removed_alias_loses_its_point(conn, seeded, qdrant):
+    await conn.execute(
+        "insert into exercise_aliases (exercise_id, alias, source) values (2, 'flat bench', 'catalog')"
+    )
+    await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
+    await conn.execute("delete from exercise_aliases")
+
+    count = await index_exercises(conn, qdrant, fake_embedder(5), TEST_COLLECTION)
+
+    assert count.points == 2
+    assert (2, "alias", "flat bench") not in await _texts(qdrant)

@@ -1,7 +1,7 @@
-"""Search exercise names by meaning in Qdrant, for find_exercise's fallback (docs/tools.md).
+"""Search exercises by meaning in Qdrant, for find_exercise's fallback (docs/tools.md).
 
 Returns raw scores, best first, with no cutoff: find_exercise applies MIN_SCORE, and
-scripts/score_queries.py prints the raw scores so the cutoff can be checked.
+scripts/sweep_search.py replays a saved eval run to choose it.
 """
 
 from dataclasses import dataclass
@@ -11,14 +11,13 @@ from qdrant_client import AsyncQdrantClient
 from workout_agent.embeddings.index import COLLECTION, Embedder
 
 # Cosine score a meaning match needs before find_exercise offers it as "did you mean…?".
-# Measured with scripts/score_queries.py on the real 154 exercises (text-embedding-3-small):
-#   "chest press"  0.556 Barbell Bench Press, 0.555 Cable Mid Chest Crossover,
-#                  0.547 Machine Incline Chest Press
-#   "bicep curl"   0.769 Cable Bicep Curl, 0.753 Dumbbell Bicep Curl, 0.730 Barbell Curl
-#   "zzz"          0.281 Walking, 0.268 Decline Crunch, 0.261 Flutter Kick
-#   ("asdfgh" tops out at 0.267; "leg day" gives 0.443 Leg Extension, 0.434 Leg Press.)
-# Noise stays under 0.29 and real matches start above 0.44, so the cutoff sits between them.
-MIN_SCORE = 0.40
+# Chosen with scripts/sweep_search.py on evals/results/search-2026-10-12-phase-d1-multi-vector
+# (text-embedding-3-small, several points per exercise, 154 exercises):
+#   noise phrases top out at 0.489 ("how are you" -> Good Morning; "zzz" 0.423 -> RDL)
+#   right answers by meaning start at 0.417, 0.450, then 0.533, 0.541, 0.556 …
+#   every cutoff from 0.50 to 0.70 passes 88/88 dev and 30/31 holdout with no false offer.
+# 0.52 sits just above the noise and keeps the weaker right answers a new phrase may need.
+MIN_SCORE = 0.52
 
 
 @dataclass
@@ -43,15 +42,22 @@ async def search_exercises(
         return []
 
     [vector] = await embedder([clean_query])
-    response = await qdrant.query_points(
-        collection_name=collection, query=vector, limit=limit, with_payload=True
+    # Several points per exercise (name, other names, description): one group per
+    # exercise, scored by its closest point.
+    response = await qdrant.query_points_groups(
+        collection_name=collection,
+        query=vector,
+        group_by="exercise_id",
+        group_size=1,
+        limit=limit,
+        with_payload=True,
     )
     return [
         ScoredExercise(
-            exercise_id=point.payload["exercise_id"],
-            name=point.payload["name"],
-            score=point.score,
+            exercise_id=group.hits[0].payload["exercise_id"],
+            name=group.hits[0].payload["name"],
+            score=group.hits[0].score,
         )
-        for point in response.points
-        if point.payload
+        for group in response.groups
+        if group.hits and group.hits[0].payload
     ]

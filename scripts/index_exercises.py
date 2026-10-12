@@ -1,9 +1,10 @@
-"""Embed every exercise name into Qdrant.
+"""Embed every exercise's name, other names and description into Qdrant.
 
 Usage: uv run python scripts/index_exercises.py
-Needs OPENROUTER_API_KEY in .env and the Postgres and Qdrant containers running.
-Prints the row count in Postgres and the point count in Qdrant; exits 1 if they differ.
-Safe to run again: points are keyed by exercise_id, so nothing is duplicated.
+Needs OPENROUTER_API_KEY in .env and the Postgres and Qdrant containers running; run
+scripts/load_catalog.py first so other names and muscles are indexed too. Prints the
+exercise count in Postgres and in Qdrant; exits 1 if any exercise has no point.
+Safe to run again: point ids come from the text, so nothing is duplicated.
 """
 
 import asyncio
@@ -30,9 +31,9 @@ async def main() -> int:
     embedder = cached(conn, MODEL_NAME, fetch)
     qdrant = AsyncQdrantClient(url=settings.qdrant_url)
     try:
-        points = await index_exercises(conn, qdrant, embedder)
+        count = await index_exercises(conn, qdrant, embedder)
         rows = await conn.fetchval("select count(*) from exercises")
-        info = await qdrant.get_collection(COLLECTION) if points else None
+        info = await qdrant.get_collection(COLLECTION) if count.points else None
     finally:
         await conn.close()
         await qdrant.close()
@@ -40,9 +41,10 @@ async def main() -> int:
     print(f"model:          {MODEL_NAME}")
     if info is not None:
         print(f"vector size:    {info.config.params.vectors.size}")  # type: ignore[union-attr]
-    print(f"db exercises:   {rows}")
-    print(f"qdrant points:  {points}")
-    return 0 if rows == points else 1
+    print(f"db exercises:     {rows}")
+    print(f"qdrant exercises: {count.exercises}")
+    print(f"qdrant points:    {count.points}")
+    return 0 if rows == count.exercises else 1
 
 
 if __name__ == "__main__":

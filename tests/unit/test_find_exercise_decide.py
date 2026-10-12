@@ -54,7 +54,7 @@ def test_one_partial_match_is_ok():
 
 def test_muscle_phrase_with_one_partial_match_is_ambiguous_with_meanings():
     c = Candidates(
-        parse_query("forearms"), text=_text(627), meaning=_scored((119, 0.5), (627, 0.49))
+        parse_query("forearms"), text=_text(627), meaning=_scored((119, 0.9), (627, 0.89))
     )
     d = decide(c)
     assert (d.result.status, _ids(d)) == ("ambiguous", [627, 119])
@@ -65,7 +65,7 @@ def test_spelling_fixes_come_before_meanings_and_are_capped_at_three():
         parse_query("dumbell rows"),
         text=[],
         fuzzy=_text(88, 38),
-        meaning=_scored((88, 0.6), (3, 0.5), (52, 0.45)),
+        meaning=_scored((88, 0.9), (3, 0.8), (52, 0.7)),
     )
     d = decide(c)
     assert (d.result.status, d.step, _ids(d)) == ("ambiguous", "fuzzy", [88, 38, 3])

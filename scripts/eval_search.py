@@ -26,7 +26,15 @@ from workout_agent.embeddings.cache import cached
 from workout_agent.embeddings.index import COLLECTION
 from workout_agent.embeddings.openrouter import MODEL_NAME, embed
 from workout_agent.embeddings.search import MIN_SCORE, search_exercises
-from workout_agent.evals.search import CaseResult, Tally, compare, load_cases, run_cases, summarize
+from workout_agent.evals.search import (
+    CaseResult,
+    Tally,
+    compare,
+    load_cases,
+    meaning_only,
+    run_cases,
+    summarize,
+)
 from workout_agent.settings import Settings
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -104,6 +112,13 @@ async def main(label: str, compare_with: Path | None) -> int:
 
     summary = summarize(results)
     _print_summary(summary)
+    meaning = {split: meaning_only(results, split) for split in ("dev", "holdout")}
+    print("\nQdrant alone (raw top hits, text stages ignored):")
+    for split, m in meaning.items():
+        print(
+            f"  {split:<8} hit@1 {_pct(m.hit_at_1, m.cases)}  hit@3 {_pct(m.hit_at_3, m.cases)}"
+            f"  noise max {m.noise_max:.3f}  lowest right {m.right_min}"
+        )
     _print_failures(results, names)
 
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -121,6 +136,7 @@ async def main(label: str, compare_with: Path | None) -> int:
             "cases_sha256": hashlib.sha256(CASES.read_bytes()).hexdigest(),
         },
         "summary": {kind: asdict(t) for kind, t in summary.items()},
+        "meaning_only": {split: asdict(m) for split, m in meaning.items()},
         "cases": [asdict(r) for r in results],
     }
     out.write_text(json.dumps(record, indent=2) + "\n")
