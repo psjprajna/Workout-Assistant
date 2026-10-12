@@ -82,13 +82,25 @@ def test_summarize_counts_overall_and_per_kind():
         score_case(_case((), "noise"), _found("ambiguous", 7), searched=True, raw=[]),
     ]
     summary = summarize(results)
-    assert list(summary) == ["all", "slang_synonym", "noise"]
+    assert list(summary) == ["all", "dev", "slang_synonym", "noise"]
     assert summary["all"].cases == 3
     assert summary["all"].passed == 1
     assert summary["all"].wrong_ok == 1
     assert summary["slang_synonym"].hit_at_1 == 1
     assert summary["noise"].false_offers == 1
     assert summary["all"].steps == {"text": 2, "meaning": 1}
+
+
+def test_summarize_counts_holdout_separately():
+    holdout = Case(phrase="sldl", kind="abbreviation", expected=(199,), split="holdout")
+    results = [
+        score_case(_case(), _found("ok", 2), searched=False, raw=[]),
+        score_case(holdout, _found("ok", 199), searched=False, raw=[]),
+    ]
+    summary = summarize(results)
+    assert summary["dev"].cases == 1
+    assert summary["holdout"].cases == 1
+    assert summary["holdout"].passed == 1
 
 
 def test_compare_finds_fixed_and_broken_phrases():
@@ -118,6 +130,7 @@ def test_parse_cases_reads_a_valid_case():
         _toml(kind="noise"),
         _toml(extra=1),
         {"case": _toml()["case"] * 2},
+        _toml(split="test"),
     ],
     ids=[
         "unknown top key",
@@ -129,6 +142,7 @@ def test_parse_cases_reads_a_valid_case():
         "noise with expected ids",
         "unknown case key",
         "duplicate phrase",
+        "unknown split",
     ],
 )
 def test_parse_cases_rejects_bad_input(data):

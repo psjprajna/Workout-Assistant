@@ -27,6 +27,10 @@ KINDS = (
 
 Step = Literal["text", "meaning", "none"]
 
+# dev: cases used to tune the catalog and cutoffs. holdout: written before the catalog
+# and never tuned on, so they show whether gains carry over to new phrasings.
+SPLITS = ("dev", "holdout")
+
 
 @dataclass(frozen=True)
 class Case:
@@ -34,6 +38,7 @@ class Case:
     kind: str
     # Exercise ids that count as a right answer. Empty: nothing should be offered.
     expected: tuple[int, ...]
+    split: str = "dev"
 
 
 @dataclass
@@ -53,6 +58,7 @@ class RawHit:
 class CaseResult:
     phrase: str
     kind: str
+    split: str
     expected: list[int]
     step: Step  # which part of find_exercise produced the options
     status: str
@@ -87,16 +93,19 @@ def parse_cases(data: Mapping[str, Any]) -> list[Case]:
     cases: list[Case] = []
     seen: set[str] = set()
     for number, raw in enumerate(data.get("case", []), start=1):
-        unknown = set(raw) - {"phrase", "kind", "expected"}
+        unknown = set(raw) - {"phrase", "kind", "expected", "split"}
         if unknown:
             raise ValueError(f"case {number}: unknown keys {sorted(unknown)}")
         phrase = raw.get("phrase")
         kind = raw.get("kind")
         expected = raw.get("expected")
+        split = raw.get("split", "dev")
         if not isinstance(phrase, str) or not phrase.strip():
             raise ValueError(f"case {number}: phrase must be a non-empty string")
         if kind not in KINDS:
             raise ValueError(f"case {number} ({phrase!r}): unknown kind {kind!r}")
+        if split not in SPLITS:
+            raise ValueError(f"case {number} ({phrase!r}): unknown split {split!r}")
         if not isinstance(expected, list) or not all(
             isinstance(i, int) and not isinstance(i, bool) for i in expected
         ):
@@ -109,7 +118,7 @@ def parse_cases(data: Mapping[str, Any]) -> list[Case]:
         if key in seen:
             raise ValueError(f"case {number}: duplicate phrase {phrase!r}")
         seen.add(key)
-        cases.append(Case(phrase=phrase, kind=kind, expected=tuple(expected)))
+        cases.append(Case(phrase=phrase, kind=kind, expected=tuple(expected), split=split))
 
     if not cases:
         raise ValueError("no cases")
@@ -145,6 +154,7 @@ def score_case(
     return CaseResult(
         phrase=case.phrase,
         kind=case.kind,
+        split=case.split,
         expected=list(case.expected),
         step=step,
         status=result.status,
@@ -184,10 +194,12 @@ async def run_cases(
 
 
 def summarize(results: list[CaseResult]) -> dict[str, Tally]:
-    """Counts overall ("all") and per kind, in KINDS order."""
-    tallies = {"all": Tally()} | {kind: Tally() for kind in KINDS}
+    """Counts overall ("all"), per split, then per kind in KINDS order."""
+    tallies = (
+        {"all": Tally()} | {split: Tally() for split in SPLITS} | {kind: Tally() for kind in KINDS}
+    )
     for r in results:
-        for tally in (tallies["all"], tallies[r.kind]):
+        for tally in (tallies["all"], tallies[r.split], tallies[r.kind]):
             tally.cases += 1
             tally.passed += r.passed
             tally.hit_at_1 += r.hit_at_1

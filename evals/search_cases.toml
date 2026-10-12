@@ -459,3 +459,193 @@ expected = []
 phrase = "push day"
 kind = "noise"
 expected = []
+
+# --- holdout: written before the exercise catalog (config/exercise_catalog.toml) ------
+# Kept out of tuning: catalog entries and cutoffs are chosen on the cases above, and these
+# show whether the gains carry over to phrasings nobody tuned for.
+
+[[case]]
+phrase = "concentration curl"
+kind = "exact_words"
+split = "holdout"
+expected = [107]  # Dumbbell Concentration Curl
+
+[[case]]
+phrase = "leg extension"
+kind = "exact_words"
+split = "holdout"
+expected = [130]  # Leg Extension
+
+[[case]]
+phrase = "hanging leg raise"
+kind = "exact_words"
+split = "holdout"
+expected = [61, 690]  # Hanging Leg Raise, Hanging Knee Raise
+
+[[case]]
+phrase = "deadlifts"
+kind = "plural_typo"
+split = "holdout"
+expected = [93, 189, 199, 1433]  # Barbell / Smith Machine / Romanian Deadlifts
+
+[[case]]
+phrase = "shoulder presses"
+kind = "plural_typo"
+split = "holdout"
+expected = [48, 46]  # Dumbbell Shoulder Press, Machine Shoulder Press
+
+[[case]]
+phrase = "pull overs"
+kind = "plural_typo"
+split = "holdout"
+expected = [375]  # Dumbbell Pullover
+
+[[case]]
+phrase = "wrist curls"
+kind = "plural_typo"
+split = "holdout"
+expected = [126, 119, 117, 1086, 123, 118]  # Barbell / Dumbbell wrist curls
+
+[[case]]
+phrase = "upright rows"
+kind = "plural_typo"
+split = "holdout"
+expected = [13]  # Barbell Upright Row
+
+[[case]]
+phrase = "chest flys"
+kind = "plural_typo"
+split = "holdout"
+expected = [41, 45, 1279]  # Dumbbell Fly, Machine Fly, Cable Decline Chest Fly
+
+[[case]]
+phrase = "tricep kickbacks"
+kind = "plural_typo"
+split = "holdout"
+expected = [1164, 777]  # Cable / Dumbbell Tricep Kickback
+
+[[case]]
+phrase = "db shoulder press"
+kind = "abbreviation"
+split = "holdout"
+expected = [48]  # Dumbbell Shoulder Press
+
+[[case]]
+phrase = "bb squat"
+kind = "abbreviation"
+split = "holdout"
+expected = [12]  # Barbell Squat
+
+[[case]]
+phrase = "db flyes"
+kind = "abbreviation"
+split = "holdout"
+expected = [41]  # Dumbbell Fly
+
+[[case]]
+phrase = "sldl"
+kind = "abbreviation"
+split = "holdout"
+expected = [199, 1433]  # stiff-leg deadlift: Barbell / Dumbbell Romanian Deadlift
+
+[[case]]
+phrase = "kb squat"
+kind = "abbreviation"
+split = "holdout"
+expected = [479]  # Kettlebell Goblet Squat
+
+[[case]]
+phrase = "cgbp"
+kind = "abbreviation"
+split = "holdout"
+expected = [4]  # Barbell Close Grip Bench Press
+
+[[case]]
+phrase = "pec fly machine"
+kind = "slang_synonym"
+split = "holdout"
+expected = [45]  # Machine Fly
+
+[[case]]
+phrase = "back extension"
+kind = "slang_synonym"
+split = "holdout"
+expected = [92]  # Back Hyperextension
+
+[[case]]
+phrase = "butterfly machine"
+kind = "slang_synonym"
+split = "holdout"
+expected = [45]  # Machine Fly
+
+[[case]]
+phrase = "landmine row"
+kind = "slang_synonym"
+split = "holdout"
+expected = [52]  # T Bar Row
+
+[[case]]
+phrase = "overhead tricep extension"
+kind = "slang_synonym"
+split = "holdout"
+expected = [155, 230, 247]  # Cable Rope Overhead / Dumbbell Tricep Extension
+
+[[case]]
+phrase = "hip raise"
+kind = "slang_synonym"
+split = "holdout"
+expected = [194, 386]  # Bridge, Barbell Hip Thrust
+
+[[case]]
+phrase = "rope pushdown"
+kind = "slang_synonym"
+split = "holdout"
+expected = [159]  # Cable Rope Triceps Pushdown
+
+[[case]]
+phrase = "shoulders"
+kind = "muscle_goal"
+split = "holdout"
+expected = [48, 46, 32, 19, 6, 29, 413, 1127]  # shoulder presses and raises
+
+[[case]]
+phrase = "quads"
+kind = "muscle_goal"
+split = "holdout"
+expected = [130, 12, 132, 135, 1199, 205, 1346, 1209, 1102]  # squats, leg press, leg extension
+
+[[case]]
+phrase = "obliques"
+kind = "muscle_goal"
+split = "holdout"
+expected = [677, 339]  # Weighted Trunk Rotation, Weight Plate Russian Twist
+
+[[case]]
+phrase = "lower back"
+kind = "muscle_goal"
+split = "holdout"
+expected = [92, 7]  # Back Hyperextension, Barbell Good Morning
+
+[[case]]
+phrase = "something for my back"
+kind = "muscle_goal"
+split = "holdout"
+expected = [21, 86, 1268, 820, 3, 88, 52, 1262, 700, 696]  # rows and pulldowns
+
+[[case]]
+phrase = "rest day"
+kind = "noise"
+split = "holdout"
+expected = []
+
+[[case]]
+phrase = "thanks"
+kind = "noise"
+split = "holdout"
+expected = []
+
+[[case]]
+phrase = "how much protein"
+kind = "noise"
+split = "holdout"
+expected = []

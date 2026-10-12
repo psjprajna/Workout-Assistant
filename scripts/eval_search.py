@@ -66,7 +66,8 @@ def _print_failures(results: list[CaseResult], names: dict[int, str]) -> None:
         wanted = ", ".join(names[i] for i in r.expected[:3]) or "nothing"
         top = r.raw[0] if r.raw else None
         top_text = f"{top.score:.3f} {top.name}" if top else "-"
-        print(f"  [{r.kind}] {r.phrase!r}: {r.step}/{r.status} -> {shown}")
+        tag = r.kind if r.split == "dev" else f"{r.kind}, holdout"
+        print(f"  [{tag}] {r.phrase!r}: {r.step}/{r.status} -> {shown}")
         print(f"      wanted {wanted}; top raw {top_text}; best right {r.best_right_score}")
 
 
