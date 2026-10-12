@@ -19,7 +19,7 @@ from qdrant_client import AsyncQdrantClient, models
 
 COLLECTION = "exercises"
 
-# How many texts go to the embedding model in one request.
+# How many texts go to the embedding model, or points to Qdrant, in one request.
 BATCH_SIZE = 256
 
 # Namespace for point ids: uuid5(namespace, "exercise_id:kind:text").
@@ -106,23 +106,19 @@ async def index_exercises(
     await _ensure_collection(qdrant, collection, len(vectors[0]))
 
     ids: list[models.ExtendedPointId] = [t.point_id for t in texts]
-    await qdrant.upsert(
-        collection_name=collection,
-        points=[
-            models.PointStruct(
-                id=t.point_id,
-                vector=vector,
-                payload={
-                    "exercise_id": t.exercise_id,
-                    "name": t.name,
-                    "kind": t.kind,
-                    "text": t.text,
-                },
-            )
-            for t, vector in zip(texts, vectors, strict=True)
-        ],
-        wait=True,
-    )
+    points = [
+        models.PointStruct(
+            id=t.point_id,
+            vector=vector,
+            payload={"exercise_id": t.exercise_id, "name": t.name, "kind": t.kind, "text": t.text},
+        )
+        for t, vector in zip(texts, vectors, strict=True)
+    ]
+    # In batches: one request with every large vector can pass Qdrant's 32 MB limit.
+    for start in range(0, len(points), BATCH_SIZE):
+        await qdrant.upsert(
+            collection_name=collection, points=points[start : start + BATCH_SIZE], wait=True
+        )
 
     # Drop points for texts that are gone: removed exercises, aliases or descriptions.
     await qdrant.delete(
@@ -133,8 +129,8 @@ async def index_exercises(
         wait=True,
     )
 
-    points = (await qdrant.count(collection_name=collection, exact=True)).count
-    return IndexCount(exercises=len({t.exercise_id for t in texts}), points=points)
+    count = (await qdrant.count(collection_name=collection, exact=True)).count
+    return IndexCount(exercises=len({t.exercise_id for t in texts}), points=count)
 
 
 async def _ensure_collection(qdrant: AsyncQdrantClient, collection: str, size: int) -> None:
