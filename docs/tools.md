@@ -42,7 +42,7 @@ Derived from §19 and §20. Fourteen tools in five groups.
 |---|---|---|---|
 | `next_rotation_day` | `weekday: Weekday` (tie-break) | `{day_id, name, last_done, candidates}` least recently done of the six rotation days, Arms excluded | `ambiguous` when tied; `no_rows` with no history |
 | `planned_exercises` | `day_id: int` | `[{exercise_id, name, sets, target_reps: [int]}]` joined on `belongplan = days._id` | `no_rows` |
-| `find_exercise` | `phrase: str` | `[{exercise_id, name, score}]` from Qdrant plus planned names | `ambiguous` when several close matches (options = names); `no_rows` when nothing close, never a near guess |
+| `find_exercise` | `phrase: str` | `[{exercise_id, name}]`: exact name, whole-word match on names and other names (`exercise_aliases`), muscle tags, spelling fixes (pg_trgm), then Qdrant meaning matches at or above `MIN_SCORE` | `ok` only for one exact name, or one exact other name with nothing else matching, or one whole-word match on a non-muscle phrase; `ambiguous` for several, for muscle phrases, and for every spelling or meaning match, even one; `no_rows` when nothing is close or the phrase is about a day or workout, never a near guess |
 | `last_session` | `exercise_id: int` | `{date, sets: [{weight_kg, reps}], day_name}` latest session containing it | `no_rows` |
 | `sets_in_range` | `exercise_id: int, start: date, end: date` | `[{date, weight_kg, reps}]` | `no_rows` (which range is empty goes in `note`) |
 | `progression_rule` | `exercise_id: int` | `{tag: compound \| isolation \| assisted, step_kg, miss_policy}` tag and rule together, one lookup instead of two | `no_rows` when untagged: no recommendation, say why |

@@ -27,7 +27,10 @@ packages = ["src/workout_agent"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["llm: tests that call a real language model (need an API key)"]
+markers = [
+    "llm: tests that call a real language model (need an API key)",
+    "search_eval: search quality gate on your real data and Qdrant index",
+]
 
 [tool.ruff]
 line-length = 100

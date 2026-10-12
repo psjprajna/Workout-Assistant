@@ -2,7 +2,7 @@
 
 Usage: uv run python scripts/score_queries.py [phrase ...]
 Needs OPENROUTER_API_KEY in .env, Qdrant running, and scripts/index_exercises.py run first.
-Use the output to check MIN_SCORE in src/workout_agent/embeddings/search.py.
+For choosing MIN_SCORE, prefer scripts/sweep_search.py on a saved eval run.
 """
 
 import asyncio

@@ -29,13 +29,24 @@ uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :
 
 The chat page sends every message to the API's `POST /chat`, so uvicorn must be running. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
 
+## Exercise search
+
+`find_exercise` tidies the phrase ("db" -> dumbbell), stops phrases about a day or workout, matches whole words against names and their other names, answers muscle phrases from muscle tags, fixes misspelt words, and only then searches by meaning in Qdrant. Other names, muscles and equipment live in `config/exercise_catalog.toml`.
+
+```sh
+uv run python scripts/load_catalog.py       # check the catalog and store it (after load_jefit.py)
+uv run python scripts/index_exercises.py    # embed names, other names, descriptions into Qdrant
+```
+
 ## Scoring exercise search
 
 ```sh
-uv run python scripts/eval_search.py --label my-change --compare evals/results/search-2026-10-12-baseline-name-only.json
+uv run python scripts/eval_search.py --label my-change --compare evals/results/search-2026-10-12-phase-d2-large.json
+uv run python scripts/sweep_search.py evals/results/search-<date>-my-change.json   # cutoffs, offline
+uv run pytest -m search_eval                                                        # quality gate
 ```
 
-Runs `find_exercise` on the labelled phrases in `evals/search_cases.toml`, prints pass rates per kind and every failed case, and saves the run to `evals/results/`.
+`eval_search.py` runs `find_exercise` on the labelled phrases in `evals/search_cases.toml` (dev and held-out), prints pass rates per kind, Qdrant's own hit rates and every failed case, and saves the run to `evals/results/`. Embeddings are cached in Postgres, so reruns are free. `sweep_search.py` replays a saved run for a range of `MIN_SCORE` values. The `search_eval` test fails if search confidently picks a wrong exercise, offers anything for noise, or fails a phrase the reference run passed.
 
 ## Reading order
 
