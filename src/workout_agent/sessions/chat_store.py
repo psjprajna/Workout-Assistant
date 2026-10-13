@@ -4,6 +4,7 @@ The agent path loads the last few turns' model messages before a run and saves t
 turn after it succeeds. The /chats routes read, rename and delete through here.
 A turn's number comes from the history load; if two requests for one chat race, the
 second insert of the same (chat_id, turn_no) fails instead of overwriting anything.
+try_lock_chat turns such a race away before the run starts, so that insert is a backstop.
 """
 
 import json
@@ -137,3 +138,19 @@ async def rename_chat(conn: asyncpg.Connection, chat_id: str, title: str) -> boo
         title,
     )
     return status == "UPDATE 1"
+
+
+async def try_lock_chat(conn: asyncpg.Connection, chat_id: str) -> bool:
+    """Claim the chat for one request; False if another request is answering in it.
+
+    A session-level advisory lock: unlock_chat releases it, and returning the connection
+    to the pool releases it too (asyncpg resets the connection), so a cancelled stream
+    can't leave a chat locked.
+    """
+    return bool(
+        await conn.fetchval("select pg_try_advisory_lock(hashtext($1))", chat_id)
+    )
+
+
+async def unlock_chat(conn: asyncpg.Connection, chat_id: str) -> None:
+    await conn.execute("select pg_advisory_unlock(hashtext($1))", chat_id)

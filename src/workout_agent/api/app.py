@@ -1,11 +1,17 @@
 """The HTTP API (FastAPI): POST /chat takes a chat id and a message, returns the reply.
 
+POST /chat/stream takes the same body and answers with server-sent events: one
+`data: {json}` line per tool start/end, then the reply (workflow/events.py), and a
+`: ping` comment while nothing else is happening so proxies keep the connection open.
+
 create_app wires up a database connection pool and the router to use. With an agent,
 each chat's turns are saved in Postgres, and GET/PATCH/DELETE /chats list, rename and
 remove them (the chat page's sidebar). Given a Qdrant URL and an embedder, the agent's
 find_exercise also searches by meaning. GET /health is a simple "is it running" check.
 """
 
+import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -13,6 +19,7 @@ from functools import partial
 
 import asyncpg
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from qdrant_client import AsyncQdrantClient
@@ -22,8 +29,14 @@ from workout_agent.db.migrate import apply_migrations
 from workout_agent.embeddings.index import Embedder
 from workout_agent.embeddings.search import search_exercises
 from workout_agent.sessions import chat_store
-from workout_agent.workflow.agent_chat import handle_agent_message
+from workout_agent.workflow.agent_chat import handle_agent_message, stream_agent_message
 from workout_agent.workflow.chat import Route, Session, handle_message
+from workout_agent.workflow.events import ChatEvent, Error, Final, chat_event_adapter
+
+logger = logging.getLogger(__name__)
+
+HEARTBEAT_SECONDS = 5.0
+STREAM_FAILED = "Something went wrong while answering. Please try again."
 
 
 class ChatRequest(BaseModel):
@@ -118,6 +131,58 @@ def create_app(
             reply = await handle_message(conn, session, request.message, route)
 
         return ChatResponse(reply=reply)
+
+    async def chat_events(request: ChatRequest) -> AsyncIterator[ChatEvent]:
+        # The connection is borrowed here, not in the route: the route returns before
+        # the stream ends, and the connection must stay ours until the last event.
+        async with app.state.pool.acquire() as conn:
+            if agent is not None:
+                async for event in stream_agent_message(
+                    conn,
+                    request.chat_id,
+                    request.message,
+                    agent,
+                    search=app.state.search,
+                    history_turns=history_turns,
+                    full_tool_turns=history_full_tool_turns,
+                ):
+                    yield event
+            else:
+                session = app.state.sessions.setdefault(request.chat_id, Session())
+                yield Final(reply=await handle_message(conn, session, request.message, route))
+
+    async def sse(request: ChatRequest) -> AsyncIterator[str]:
+        """Events as SSE lines, with a ping whenever none came for HEARTBEAT_SECONDS."""
+        queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
+
+        async def produce() -> None:
+            try:
+                async for event in chat_events(request):
+                    await queue.put(event)
+            except Exception:
+                logger.exception("chat stream failed for chat %s", request.chat_id)
+                await queue.put(Error(message=STREAM_FAILED))
+            finally:
+                await queue.put(None)  # end of stream
+
+        task = asyncio.create_task(produce())
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), HEARTBEAT_SECONDS)
+                except TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                if event is None:
+                    break
+                yield f"data: {chat_event_adapter.dump_json(event).decode()}\n\n"
+        finally:
+            # The client went away (or we finished): stop the run; nothing is saved.
+            task.cancel()
+
+    @app.post("/chat/stream")
+    async def chat_stream(request: ChatRequest) -> StreamingResponse:
+        return StreamingResponse(sse(request), media_type="text/event-stream")
 
     @app.get("/chats", response_model=list[ChatSummaryOut])
     async def list_chats(limit: int = 20, before: datetime | None = None) -> list[ChatSummaryOut]:

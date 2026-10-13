@@ -27,7 +27,7 @@ uv run uvicorn workout_agent.api.main:app --reload              # API on :8000
 uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :8001
 ```
 
-The chat page sends every message to the API's `POST /chat`, so uvicorn must be running. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
+The chat page sends every message to the API's `POST /chat/stream` (server-sent events: each tool call as it starts and ends, then the reply), so uvicorn must be running. `POST /chat` returns the same reply in one response. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
 
 Chainlit needs `CHAINLIT_AUTH_SECRET` in `.env` (it signs the session of the one built-in user, so there is no login form). Create it once:
 

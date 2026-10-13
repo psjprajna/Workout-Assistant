@@ -134,3 +134,14 @@ async def test_delete_chat_removes_its_turns(conn, client):
     assert r.status_code == 204
     assert (await client.get("/chats/x")).status_code == 404
     assert await conn.fetchval("select count(*) from chat_turns where chat_id = 'x'") == 0
+
+
+async def test_chat_stream_without_an_agent_sends_one_final_event(client):
+    from workout_agent.ui.client import stream_message
+    from workout_agent.workflow.events import Final
+
+    events = [e async for e in stream_message(client, "page", "last time I did bench press?")]
+
+    assert len(events) == 1
+    assert isinstance(events[0], Final)
+    assert "Which one" in events[0].reply
