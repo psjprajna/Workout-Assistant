@@ -13,15 +13,11 @@ import asyncpg
 from workout_agent.tools.find_exercise import ExerciseMatch, FindResult, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
 from workout_agent.workflow.replies import (
+    HELP_TEXT,
     UNVERIFIED_REPLY,
     format_find_question,
     format_last_session,
     verify_reply,
-)
-
-HELP_TEXT = (
-    "I can answer questions about your last session of an exercise, "
-    "like 'last time I did bench press?'"
 )
 
 

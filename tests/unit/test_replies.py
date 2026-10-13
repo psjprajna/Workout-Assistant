@@ -4,11 +4,18 @@ not in the data."""
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
+from workout_agent.agents.outputs import AskWhich, Help, NotFound, ShowLastSession
 from workout_agent.tools.find_exercise import ExerciseMatch, FindResult
 from workout_agent.tools.get_last_session import LastSessionResult, SetItem
 from workout_agent.workflow.replies import (
+    HELP_TEXT,
+    RenderError,
+    check_output,
     format_find_question,
     format_last_session,
+    render,
     verify_agent_reply,
     verify_reply,
 )
@@ -165,3 +172,66 @@ def test_agent_numbered_options_pass_up_to_the_option_count():
 def test_agent_reply_with_no_tool_results_may_have_no_numbers():
     assert verify_agent_reply("I can look up your last session of an exercise.", [])
     assert not verify_agent_reply("You usually do 5 sets.", [])
+
+
+# --- render: the agent's typed choice -> reply text, from this turn's tool results -----
+
+FOUND_AMBIGUOUS = {**AMBIGUOUS, "query": "bench press"}
+FOUND_NOTHING = {"status": "no_rows", "matches": [], "query": "zzz"}
+
+
+def test_render_show_last_session_uses_the_rule_path_template():
+    reply = render(ShowLastSession(exercise_id=2), [FOUND_AMBIGUOUS, SESSION])
+    assert reply.splitlines() == [
+        "Last time you did Barbell Bench Press was 8 Feb 2026:",
+        "- Set 1: 80.00 kg x 8",
+        "- Set 2: 80.00 kg x 7",
+        "- Set 3: 75.00 kg x 10",
+    ]
+
+
+def test_render_ask_which_lists_the_options_in_the_order_chosen():
+    reply = render(AskWhich(option_ids=[8, 2]), [FOUND_AMBIGUOUS])
+    assert reply.splitlines() == [
+        "I found more than one match for 'bench press'. Which one do you mean?",
+        "1. Barbell Incline Bench Press",
+        "2. Barbell Bench Press",
+    ]
+
+
+def test_render_ask_which_with_one_option_asks_did_you_mean():
+    reply = render(AskWhich(option_ids=[8]), [FOUND_AMBIGUOUS])
+    assert reply == (
+        "I couldn't find 'bench press' exactly. Did you mean Barbell Incline Bench Press?"
+    )
+
+
+def test_render_not_found_and_help():
+    assert render(NotFound(), [FOUND_NOTHING]) == "'zzz' is not in your data."
+    assert render(Help(), []) == HELP_TEXT
+
+
+@pytest.mark.parametrize(
+    ("output", "evidence"),
+    [
+        (ShowLastSession(exercise_id=8), [SESSION]),  # fetched 2, not 8
+        (ShowLastSession(exercise_id=2), [FOUND_AMBIGUOUS]),  # found, never fetched
+        (AskWhich(option_ids=[2, 99]), [FOUND_AMBIGUOUS]),  # 99 was not offered
+        (AskWhich(option_ids=[2, 2]), [FOUND_AMBIGUOUS]),
+        (AskWhich(option_ids=[2]), [SESSION]),  # no ambiguous find this turn
+        (NotFound(), [FOUND_AMBIGUOUS]),  # the search did find things
+    ],
+)
+def test_an_output_that_cites_what_no_tool_returned_is_an_error(output, evidence):
+    assert check_output(output, evidence) is not None
+    with pytest.raises(RenderError):
+        render(output, evidence)
+
+
+def test_a_rendered_reply_always_passes_the_number_check():
+    for output, evidence in [
+        (ShowLastSession(exercise_id=2), [SESSION]),
+        (AskWhich(option_ids=[2, 8]), [FOUND_AMBIGUOUS]),
+        (NotFound(), [{**FOUND_NOTHING, "query": "squat 5x5"}]),  # digits in the query
+    ]:
+        assert verify_agent_reply(render(output, evidence), evidence)

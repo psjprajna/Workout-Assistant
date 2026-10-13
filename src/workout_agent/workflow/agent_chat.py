@@ -3,9 +3,11 @@
 The agent decides which tools to call. stream_agent_message reports each tool call as it
 starts and ends, then the reply. Each answered turn is saved in Postgres
 (sessions/chat_store.py), and the last few turns go back to the model on the next one,
-so "the incline one" makes sense, even after a restart. Before a reply is shown, code
-checks every number in it against the tool results the model saw (this turn's, and those
-in the history it was given); a reply that fails is replaced by a refusal and not saved.
+so "the incline one" makes sense, even after a restart. The model answers with a typed
+choice; code writes the reply from this turn's tool results (replies.render). Before a
+reply is shown, code also checks every number in it against the tool results the model
+saw (this turn's, and those in the history it was given); a reply that fails is replaced
+by a refusal and not saved.
 A failed or abandoned run saves nothing. handle_agent_message is the same path for
 callers that only want the reply.
 """
@@ -25,13 +27,19 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import UsageLimits
 
+from workout_agent.agents.outputs import AgentOutput
 from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
 from workout_agent.sessions.history import shrink_old_tool_results
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
 from workout_agent.workflow.events import ChatEvent, Error, Final, ToolEnd, ToolStart, tool_label
-from workout_agent.workflow.replies import UNVERIFIED_REPLY, verify_agent_reply
+from workout_agent.workflow.replies import (
+    UNVERIFIED_REPLY,
+    RenderError,
+    render,
+    verify_agent_reply,
+)
 
 BUSY_REPLY = "This chat is busy answering another message. Please send yours again."
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
@@ -56,12 +64,12 @@ def _tool_results_in(messages: list[ModelMessage]) -> list[dict[str, Any]]:
 
 
 async def _run_agent(
-    agent: Agent[AgentDeps, str],
+    agent: Agent[AgentDeps, AgentOutput],
     text: str,
     deps: AgentDeps,
     history: list[ModelMessage],
     queue: asyncio.Queue[ChatEvent | None],
-) -> AgentRunResult[str]:
+) -> AgentRunResult[AgentOutput]:
     """Run the agent, putting a ToolStart/ToolEnd on the queue per tool call, then None."""
     try:
         # iter() walks the run node by node. Only the tool-calling nodes are streamed,
@@ -95,7 +103,7 @@ async def stream_agent_message(
     conn: asyncpg.Connection,
     chat_id: str,
     text: str,
-    agent: Agent[AgentDeps, str],
+    agent: Agent[AgentDeps, AgentOutput],
     search: Searcher | None = None,
     history_turns: int = 10,
     full_tool_turns: int = 2,
@@ -122,9 +130,18 @@ async def stream_agent_message(
                 task.cancel()
                 await asyncio.wait({task})  # it must stop using conn before we go on
 
+        # The model chose; code writes the words, only from this turn's tool results.
+        # (The output validator already sent back any choice that cites what no tool
+        # returned, so this failing means a bug; it is still never shown or saved.)
+        try:
+            reply = render(result.output, deps.evidence)
+        except RenderError:
+            yield Error(message=UNVERIFIED_REPLY)
+            return
+
         # Verification is code: every number must come from a tool result the model saw.
         seen = _tool_results_in(history) + deps.evidence
-        if not verify_agent_reply(result.output, seen):
+        if not verify_agent_reply(reply, seen):
             yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
             return  # the request did not succeed, so nothing is saved
 
@@ -132,14 +149,14 @@ async def stream_agent_message(
         try:
             # new_messages() is only this turn; older turns are already saved.
             await save_turn(
-                conn, chat_id, last_turn + 1, text, result.output,
+                conn, chat_id, last_turn + 1, text, reply,
                 result.new_messages(), deps.evidence, title, is_fallback,
             )
         except asyncpg.UniqueViolationError:
             # Another message in this chat finished first; don't overwrite its turn.
             yield Error(message=BUSY_REPLY)
             return
-        yield Final(reply=result.output, verified=True, checked=len(seen))
+        yield Final(reply=reply, verified=True, checked=len(seen))
     finally:
         await unlock_chat(conn, chat_id)
 
@@ -148,7 +165,7 @@ async def handle_agent_message(
     conn: asyncpg.Connection,
     chat_id: str,
     text: str,
-    agent: Agent[AgentDeps, str],
+    agent: Agent[AgentDeps, AgentOutput],
     search: Searcher | None = None,
     history_turns: int = 10,
     full_tool_turns: int = 2,

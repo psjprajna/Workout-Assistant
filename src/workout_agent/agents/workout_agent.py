@@ -1,39 +1,43 @@
-"""The workout agent: one model that decides which tool to call.
+"""The workout agent: one model that decides which tool to call and which answer to give.
 
 It can look up an exercise (find_exercise) and fetch its last session
-(get_last_session). Every tool result is copied into deps.evidence, so we can check
-afterwards that the reply only contains numbers the tools returned.
+(get_last_session). It answers with one typed choice (agents/outputs.py), never with
+text: code writes the reply from the tool results. Every tool result is copied into
+deps.evidence; an answer about an id no tool returned this turn is sent back to the
+model to fix (output validator), so it can't cite what it never fetched.
 """
 
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import asyncpg
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models.openrouter import OpenRouterModel, OpenRouterModelSettings
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 
+from workout_agent.agents.outputs import OUTPUT_TYPES, AgentOutput
 from workout_agent.settings import Settings
 from workout_agent.tools.find_exercise import Searcher, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
+from workout_agent.workflow.replies import check_output
 
 MODEL_NAME = "qwen/qwen3.5-35b-a3b"
 
 INSTRUCTIONS = (
-    "You answer questions about the user's workout log. "
-    "Always call find_exercise first; never use an exercise id you did not get from a tool. "
-    "Only state facts returned by the tools. Never invent or assume numbers. "
-    "If find_exercise returns 'ambiguous', list the exact options and ask which one. "
-    "If a tool returns 'no_rows', say that item is not in the data. "
-    "Keep answers to a couple of short lines."
-    "When find_exercise returns 'ambiguous', show the options as a numbered list "
-    "(1., 2., 3., ...) in exactly the order the tool returned them. "
-    "If the user then replies with a number, that number is the position in that list; "
-    "call get_last_session with that option's exercise_id. "
-    "An 'ambiguous' result can also be close matches by meaning when no name matched "
-    "the words: offer them the same way, as 'Did you mean' and the numbered list. "
-    "'ambiguous' with a single option is still a question: ask 'Did you mean ...?' "
-    "and wait; never call get_last_session for it until the user says yes. "
+    "You answer questions about the user's workout log by choosing one final output. "
+    "You never write the answer text: code writes it from the tool results. "
+    "When the user names an exercise, call find_exercise with their words. "
+    "If it returns 'ok', call get_last_session with that exercise_id, then choose "
+    "ShowLastSession with the same exercise_id. "
+    "If it returns 'ambiguous', choose AskWhich with the option ids in exactly the order "
+    "returned, even when there is only one option; do not call get_last_session for them. "
+    "If it returns 'no_rows', choose NotFound. "
+    "If the user answers your last AskWhich with a number, that is the position in that "
+    "list; with 'yes' to a single option, it is that option. Call get_last_session with "
+    "that exercise_id, then choose ShowLastSession. "
+    "To show any session, call get_last_session in this turn, even if you fetched it "
+    "before. Never use an exercise id you did not get from a tool. "
+    "For greetings and anything not about an exercise's last session, choose Help."
 )
 
 
@@ -54,7 +58,7 @@ def _jsonable(result: Any) -> dict[str, Any]:
     return data
 
 
-def build_agent(settings: Settings) -> Agent[AgentDeps, str]:
+def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
     if settings.openrouter_api_key is None:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
@@ -68,12 +72,23 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, str]:
         openrouter_provider={"data_collection": "deny", "allow_fallbacks": False},
     )
 
-    agent = Agent(
+    agent: Agent[AgentDeps, AgentOutput] = Agent(
         model,
         deps_type=AgentDeps,
+        output_type=OUTPUT_TYPES,  # tool output mode: one output tool per choice
         instructions=INSTRUCTIONS,
         model_settings=model_settings,
+        retries={"output": 2},  # room to fix an answer the validator sends back
     )
+
+    @agent.output_validator
+    def answer_only_from_this_turn(
+        ctx: RunContext[AgentDeps], output: AgentOutput
+    ) -> AgentOutput:
+        problem = check_output(output, ctx.deps.evidence)
+        if problem is not None:
+            raise ModelRetry(problem)
+        return output
 
     @agent.tool
     async def find_exercise_tool(ctx: RunContext[AgentDeps], query: str) -> dict[str, Any]:
@@ -82,7 +97,8 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, str]:
         Use this whenever the user names an exercise.
         """
         data = _jsonable(await find_exercise(ctx.deps.conn, query, ctx.deps.search))
-        ctx.deps.evidence.append(data)
+        # The evidence also keeps the words searched for: replies quote them back.
+        ctx.deps.evidence.append({**data, "query": query})
         return data
 
     @agent.tool

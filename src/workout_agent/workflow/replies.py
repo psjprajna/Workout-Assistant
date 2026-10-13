@@ -2,8 +2,11 @@
 
 Nothing here calls a model. Every number in a reply is copied from a tool result,
 and verify_reply proves it by checking each number in a reply against the data.
-verify_agent_reply does the same for the agent's own wording, against every tool result
-the model was shown (the evidence dicts).
+render writes the agent's reply: the model only picks a typed output (agents/outputs.py)
+and the ids it is about, and render looks those up in this turn's tool results (the
+evidence dicts) and fills the same templates. check_output says why an output can't be
+rendered, e.g. an id no tool returned this turn. verify_agent_reply checks every number
+in a reply against every tool result the model was shown.
 """
 
 import re
@@ -11,8 +14,14 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from workout_agent.tools.find_exercise import FindResult
-from workout_agent.tools.get_last_session import LastSessionResult
+from workout_agent.agents.outputs import AgentOutput, AskWhich, Help, NotFound, ShowLastSession
+from workout_agent.tools.find_exercise import ExerciseMatch, FindResult
+from workout_agent.tools.get_last_session import LastSessionResult, SetItem
+
+HELP_TEXT = (
+    "I can answer questions about your last session of an exercise, "
+    "like 'last time I did bench press?'"
+)
 
 # --- Templates: each reply is built from tool-result fields, never from model text ---
 
@@ -56,6 +65,99 @@ def format_find_question(result: FindResult, query: str) -> str:
     raise ValueError("format_find_question called with an 'ok' result")
 
 
+def format_did_you_mean(match: ExerciseMatch, query: str) -> str:
+    """One close match: a yes/no question (the agent path understands "yes")."""
+    return f"I couldn't find '{query}' exactly. Did you mean {match.name}?"
+
+
+# --- The agent's typed output -> reply text, from this turn's tool results ---
+
+
+class RenderError(Exception):
+    """The output refers to something no tool returned in this turn."""
+
+
+def _is_session(e: dict[str, Any]) -> bool:
+    return "exercise_log_id" in e  # get_last_session results; find results have "matches"
+
+
+def _session(evidence: list[dict[str, Any]], exercise_id: int) -> dict[str, Any] | None:
+    found = [e for e in evidence if _is_session(e) and e["exercise_id"] == exercise_id]
+    return found[-1] if found else None
+
+
+def _finds(evidence: list[dict[str, Any]], status: str) -> list[dict[str, Any]]:
+    return [e for e in evidence if "matches" in e and e["status"] == status]
+
+
+def _ambiguous_with(evidence: list[dict[str, Any]], ids: list[int]) -> dict[str, Any] | None:
+    """The latest 'ambiguous' find_exercise result that offered every one of these ids."""
+    for e in reversed(_finds(evidence, "ambiguous")):
+        if set(ids) <= {m["exercise_id"] for m in e["matches"]}:
+            return e
+    return None
+
+
+def check_output(output: AgentOutput, evidence: list[dict[str, Any]]) -> str | None:
+    """Why this output can't be written from this turn's tool results, or None if it can."""
+    match output:
+        case ShowLastSession(exercise_id=exercise_id):
+            if _session(evidence, exercise_id) is None:
+                return (
+                    f"get_last_session was not called for exercise_id {exercise_id} in this "
+                    "turn. Call it first, then choose ShowLastSession."
+                )
+        case AskWhich(option_ids=ids):
+            if len(set(ids)) != len(ids):
+                return "option_ids has duplicates."
+            if _ambiguous_with(evidence, ids) is None:
+                return (
+                    f"option_ids {ids} are not all options of an 'ambiguous' find_exercise "
+                    "result from this turn. Call find_exercise and use its exercise ids."
+                )
+        case NotFound():
+            if not _finds(evidence, "no_rows"):
+                return "find_exercise did not return 'no_rows' in this turn."
+        case Help():
+            pass
+    return None
+
+
+def _session_result(e: dict[str, Any]) -> LastSessionResult:
+    """An evidence dict (as the model saw it: text weights, ISO date) back to the result."""
+    return LastSessionResult(
+        status=e["status"],
+        exercise_id=e["exercise_id"],
+        exercise_name=e["exercise_name"],
+        performed_on=date.fromisoformat(e["performed_on"]) if e["performed_on"] else None,
+        exercise_log_id=e["exercise_log_id"],
+        sets=[SetItem(s["set_number"], Decimal(s["weight_kg"]), s["reps"]) for s in e["sets"]],
+    )
+
+
+def render(output: AgentOutput, evidence: list[dict[str, Any]]) -> str:
+    """The reply for the agent's choice, written only from this turn's tool results."""
+    problem = check_output(output, evidence)
+    if problem is not None:
+        raise RenderError(problem)
+    match output:
+        case ShowLastSession(exercise_id=exercise_id):
+            return format_last_session(_session_result(_session(evidence, exercise_id) or {}))
+        case AskWhich(option_ids=ids):
+            find = _ambiguous_with(evidence, ids) or {}
+            by_id = {m["exercise_id"]: m["name"] for m in find["matches"]}
+            matches = [ExerciseMatch(i, by_id[i]) for i in ids]  # in the order shown
+            if len(matches) == 1:
+                return format_did_you_mean(matches[0], find["query"])
+            return format_find_question(FindResult("ambiguous", matches), find["query"])
+        case NotFound():
+            return format_find_question(
+                FindResult("no_rows", []), _finds(evidence, "no_rows")[-1]["query"]
+            )
+        case Help():
+            return HELP_TEXT
+
+
 # --- Verification: prove a reply contains no number that is not in the data ---
 
 UNVERIFIED_REPLY = "I couldn't verify that answer, so I won't show it."
@@ -94,6 +196,7 @@ def verify_reply(reply: str, result: LastSessionResult) -> bool:
 
 def _names_in_evidence(evidence: list[dict[str, Any]]) -> list[str]:
     names = [e["exercise_name"] for e in evidence if e.get("exercise_name")]
+    names += [e["query"] for e in evidence if e.get("query")]  # echoed back, not a claim
     names += [m["name"] for e in evidence for m in e.get("matches", [])]
     return names
 

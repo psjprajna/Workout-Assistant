@@ -1,8 +1,11 @@
 """Integration tests: the agent path saves each turn and gets it back after a restart,
-streams tool progress as it runs, and lets only one message per chat run at a time.
+streams tool progress as it runs, lets only one message per chat run at a time, and
+writes replies from the model's typed choice and this turn's tool results only.
 
 The real agent and tools run against Postgres, but a FunctionModel stands in for the
-language model, so there are no network calls and the turns are predictable.
+language model, so there are no network calls and the turns are predictable. The
+FunctionModel answers the way the real one must: by calling an output tool
+(final_result_ShowLastSession, ...), never with text.
 """
 
 from contextlib import asynccontextmanager
@@ -12,11 +15,12 @@ import asyncpg
 import httpx
 import pytest
 from pydantic import SecretStr
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
-    TextPart,
+    RetryPromptPart,
     ToolCallPart,
     ToolReturnPart,
 )
@@ -33,14 +37,26 @@ from workout_agent.workflow.agent_chat import (
     stream_agent_message,
 )
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart, chat_event_adapter
-from workout_agent.workflow.replies import UNVERIFIED_REPLY
+from workout_agent.workflow.replies import HELP_TEXT
 from workout_agent.workflow.simple_router import simple_route
 
 AGENT = build_agent(Settings(openrouter_api_key=SecretStr("test")))
 
+# What code writes for the seeded bench press (conftest.seeded).
+BENCH_REPLY = "Last time you did Barbell Bench Press was 8 Feb 2026:\n- Set 1: 80.00 kg x 8"
+
+
+def choose(output: str, **args: Any) -> ModelResponse:
+    """The model's final answer: a call to one of the output tools."""
+    return ModelResponse(parts=[ToolCallPart(f"final_result_{output}", args)])
+
+
+def call(tool: str, **args: Any) -> ModelResponse:
+    return ModelResponse(parts=[ToolCallPart(tool, args)])
+
 
 class FakeModel:
-    """Each turn: get_last_session for bench press (id 2), then answer from its result.
+    """Each turn: get_last_session for bench press (id 2), then choose ShowLastSession.
 
     Remembers the messages it was given at the start of every turn.
     """
@@ -52,8 +68,7 @@ class FakeModel:
         last = messages[-1]
         returns = [p for p in last.parts if isinstance(p, ToolReturnPart)]
         if returns:
-            sets = cast(dict[str, Any], returns[0].content)["sets"]
-            return ModelResponse(parts=[TextPart(f"{sets[0]['weight_kg']} kg")])
+            return choose("ShowLastSession", exercise_id=2)
         self.seen.append(list(messages))
         return ModelResponse(
             parts=[ToolCallPart("get_last_session_tool", {"exercise_id": 2}, f"c{len(self.seen)}")]
@@ -87,7 +102,7 @@ async def test_second_turn_sees_the_first_after_a_restart(seeded, test_database_
     model = FakeModel()
     with AGENT.override(model=FunctionModel(model)):
         async with _api(test_database_url) as c:
-            assert await _chat(c, "t1", "last time bench press?") == "80.00 kg"
+            assert await _chat(c, "t1", "last time bench press?") == BENCH_REPLY
         async with _api(test_database_url) as c:  # restart
             await _chat(c, "t1", "and again?")
 
@@ -149,18 +164,15 @@ async def test_a_turn_saved_meanwhile_gives_the_busy_reply(conn, seeded, monkeyp
 
 
 class FindThenFetch:
-    """find_exercise, then get_last_session for id 2, then answer from its result."""
+    """find_exercise, then get_last_session for id 2, then choose ShowLastSession."""
 
     def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         returns = [p for p in messages[-1].parts if isinstance(p, ToolReturnPart)]
         if not returns:
-            call = ToolCallPart("find_exercise_tool", {"query": "barbell bench press"}, "f")
-            return ModelResponse(parts=[call])
+            return call("find_exercise_tool", query="barbell bench press")
         if returns[0].tool_name == "find_exercise_tool":
-            call = ToolCallPart("get_last_session_tool", {"exercise_id": 2}, "g")
-            return ModelResponse(parts=[call])
-        sets = cast(dict[str, Any], returns[0].content)["sets"]
-        return ModelResponse(parts=[TextPart(f"{sets[0]['weight_kg']} kg")])
+            return call("get_last_session_tool", exercise_id=2)
+        return choose("ShowLastSession", exercise_id=2)
 
 
 async def _turns(conn) -> int:
@@ -179,7 +191,7 @@ async def test_stream_reports_each_tool_then_the_reply(conn, seeded):
         ToolEnd(tool="find_exercise_tool", status="ok"),
         ToolStart(tool="get_last_session_tool", label="Fetching your last session…"),
         ToolEnd(tool="get_last_session_tool", status="ok"),
-        Final(reply="80.00 kg", verified=True, checked=2),
+        Final(reply=BENCH_REPLY, verified=True, checked=2),
     ]
     assert await _turns(conn) == 1
 
@@ -193,7 +205,7 @@ async def test_a_stream_closed_early_saves_nothing_and_frees_the_chat(conn, seed
         assert isinstance(first, ToolStart)
         assert await _turns(conn) == 0
         reply = await handle_agent_message(conn, "t1", "bench?", AGENT)  # not busy
-    assert reply == "80.00 kg"
+    assert reply == BENCH_REPLY
 
 
 async def test_a_message_while_the_chat_is_answering_is_busy_at_once(
@@ -203,7 +215,7 @@ async def test_a_message_while_the_chat_is_answering_is_busy_at_once(
 
     def model(messages, info):
         calls.append(messages)
-        return ModelResponse(parts=[TextPart("hi")])
+        return choose("Help")
 
     other = await asyncpg.connect(test_database_url)
     try:
@@ -212,7 +224,7 @@ async def test_a_message_while_the_chat_is_answering_is_busy_at_once(
         with AGENT.override(model=FunctionModel(model)):
             events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
             # Other chats are not affected.
-            assert await handle_agent_message(conn, "t2", "bench?", AGENT) == "hi"
+            assert await handle_agent_message(conn, "t2", "bench?", AGENT) == HELP_TEXT
     finally:
         await other.close()
 
@@ -233,7 +245,7 @@ async def test_chat_stream_endpoint_sends_sse_events(seeded, test_database_url):
 
     events = [chat_event_adapter.validate_json(line.removeprefix("data: ")) for line in lines]
     assert [e.kind for e in events] == ["tool_start", "tool_end", "tool_start", "tool_end", "final"]
-    assert events[-1] == Final(reply="80.00 kg", verified=True, checked=2)
+    assert events[-1] == Final(reply=BENCH_REPLY, verified=True, checked=2)
 
 
 async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
@@ -251,36 +263,67 @@ async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
     assert isinstance(chat_event_adapter.validate_json(data[0].removeprefix("data: ")), Error)
 
 
-# --- Verification: no number the tools did not return ---------------------------------
+# --- Typed answers: code writes the reply, only from this turn's tool results --------
 
 
-def _answers(text: str):
-    """get_last_session for id 2, then reply with `text` whatever the tool said."""
+async def test_an_answer_about_an_unfetched_id_is_sent_back_to_the_model(conn, seeded):
+    retries: list[str] = []
 
     def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        if any(isinstance(p, ToolReturnPart) for p in messages[-1].parts):
-            return ModelResponse(parts=[TextPart(text)])
-        return ModelResponse(parts=[ToolCallPart("get_last_session_tool", {"exercise_id": 2})])
+        parts = messages[-1].parts
+        retry = [p for p in parts if isinstance(p, RetryPromptPart)]
+        if retry:  # told to fetch first: does so
+            retries.append(str(retry[0].content))
+            return call("get_last_session_tool", exercise_id=2)
+        if any(isinstance(p, ToolReturnPart) for p in parts):
+            return choose("ShowLastSession", exercise_id=2)
+        return choose("ShowLastSession", exercise_id=2)  # answers without fetching
 
-    return model
-
-
-async def test_an_invented_number_is_refused_and_not_saved(conn, seeded):
-    with AGENT.override(model=FunctionModel(_answers("You lifted 85.00 kg x 8."))):
+    with AGENT.override(model=FunctionModel(model)):
         events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
 
-    assert events[-1] == Final(reply=UNVERIFIED_REPLY, verified=False, checked=1)
+    assert "get_last_session was not called for exercise_id 2" in retries[0]
+    assert events[-1] == Final(reply=BENCH_REPLY, verified=True, checked=1)
+
+
+async def test_a_model_that_keeps_citing_unfetched_ids_saves_nothing(conn, seeded):
+    def model(messages, info):
+        return choose("ShowLastSession", exercise_id=8)  # never fetched
+
+    with AGENT.override(model=FunctionModel(model)), pytest.raises(UnexpectedModelBehavior):
+        await handle_agent_message(conn, "t1", "bench?", AGENT)
     assert await _turns(conn) == 0
 
 
-async def test_a_follow_up_may_use_numbers_from_earlier_tool_results(conn, seeded):
-    def no_tools(messages, info):
-        return ModelResponse(parts=[TextPart("That was 8 reps at 80 kg.")])
+class AskThenPick:
+    """Turn 1: find_exercise -> AskWhich with its ids. Turn 2 ("2"): the 2nd id I offered."""
 
-    with AGENT.override(model=FunctionModel(FakeModel())):
-        await handle_agent_message(conn, "t1", "bench?", AGENT)
-    with AGENT.override(model=FunctionModel(no_tools)):  # answers from history alone
-        events = [e async for e in stream_agent_message(conn, "t1", "reps?", AGENT)]
+    def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        returns = [p for p in messages[-1].parts if isinstance(p, ToolReturnPart)]
+        if returns and returns[0].tool_name == "find_exercise_tool":
+            matches = cast(dict[str, Any], returns[0].content)["matches"]
+            return choose("AskWhich", option_ids=[m["exercise_id"] for m in matches])
+        if returns and returns[0].tool_name == "get_last_session_tool":
+            exercise_id = cast(dict[str, Any], returns[0].content)["exercise_id"]
+            return choose("ShowLastSession", exercise_id=exercise_id)
+        user_text = str(messages[-1].parts[-1].content)  # pyright: ignore[reportAttributeAccessIssue]
+        if user_text.isdigit():
+            asked = [
+                p.args_as_dict()["option_ids"]
+                for m in messages if isinstance(m, ModelResponse)
+                for p in m.parts
+                if isinstance(p, ToolCallPart) and p.tool_name == "final_result_AskWhich"
+            ][-1]
+            return call("get_last_session_tool", exercise_id=asked[int(user_text) - 1])
+        return call("find_exercise_tool", query="bench press")
 
-    assert events == [Final(reply="That was 8 reps at 80 kg.", verified=True, checked=1)]
+
+async def test_ask_which_then_a_number_shows_that_option(conn, seeded):
+    with AGENT.override(model=FunctionModel(AskThenPick())):
+        question = await handle_agent_message(conn, "t1", "last bench press?", AGENT)
+        answer = await handle_agent_message(conn, "t1", "2", AGENT)
+
+    assert question.startswith("I found more than one match for 'bench press'.")
+    second = question.splitlines()[-1].removeprefix("2. ")
+    assert answer.startswith(f"Last time you did {second} was")
     assert await _turns(conn) == 2

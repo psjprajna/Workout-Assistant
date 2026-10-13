@@ -1,15 +1,16 @@
-"""Show the number check on the agent path, on your real data, with no model calls.
+"""Show the checks on the agent path, on your real data, with no model calls.
 
 Usage: uv run python scripts/try_verification.py ["barbell bench press"]
-Two scripted models fetch the same last session through the real tools. One quotes the
-first set's weight as the tool returned it; the other adds 5 kg. The first reply is
-shown as verified, the second is refused. Everything runs in a transaction that is
-rolled back, so no chat is saved.
+The model only chooses a typed answer; code writes the words. Two scripted models:
+one finds the exercise, fetches its last session and chooses ShowLastSession; the other
+chooses ShowLastSession for an exercise it never fetched. The first reply is shown as
+verified. The second is sent back to the model with the reason until the retries run
+out, and nothing is shown or saved. Everything runs in a transaction that is rolled
+back, so no chat is saved either way.
 """
 
 import asyncio
 import sys
-from decimal import Decimal
 from typing import Any, cast
 
 import asyncpg
@@ -17,7 +18,7 @@ from pydantic import SecretStr
 from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
-    TextPart,
+    RetryPromptPart,
     ToolCallPart,
     ToolReturnPart,
 )
@@ -29,46 +30,62 @@ from workout_agent.workflow.agent_chat import stream_agent_message
 from workout_agent.workflow.events import Final, ToolEnd, ToolStart
 
 
-def scripted(query: str, extra_kg: Decimal) -> FunctionModel:
-    """find_exercise, get_last_session for the first match, then quote set 1 (+ extra_kg)."""
+def _call(tool: str, **args: Any) -> ModelResponse:
+    return ModelResponse(parts=[ToolCallPart(tool, args)])
+
+
+def honest(query: str) -> FunctionModel:
+    """find_exercise, get_last_session for the first match, then ShowLastSession."""
 
     def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         returns = [p for p in messages[-1].parts if isinstance(p, ToolReturnPart)]
         if not returns:
-            return ModelResponse(parts=[ToolCallPart("find_exercise_tool", {"query": query})])
+            return _call("find_exercise_tool", query=query)
         result = cast(dict[str, Any], returns[0].content)
         if returns[0].tool_name == "find_exercise_tool":
             if not result["matches"]:
-                return ModelResponse(parts=[TextPart(f"'{query}' is not in your data.")])
-            exercise_id = result["matches"][0]["exercise_id"]
-            call = ToolCallPart("get_last_session_tool", {"exercise_id": exercise_id})
-            return ModelResponse(parts=[call])
-        if not result["sets"]:
-            return ModelResponse(parts=[TextPart("No sets were logged.")])
-        first = result["sets"][0]
-        weight = Decimal(first["weight_kg"]) + extra_kg
-        text = (
-            f"Last time you did {result['exercise_name']} on {result['performed_on']}: "
-            f"{weight} kg x {first['reps']}."
-        )
-        return ModelResponse(parts=[TextPart(text)])
+                return _call("final_result_NotFound")
+            return _call("get_last_session_tool", exercise_id=result["matches"][0]["exercise_id"])
+        return _call("final_result_ShowLastSession", exercise_id=result["exercise_id"])
 
     return FunctionModel(model)
 
 
-async def ask(conn: asyncpg.Connection, label: str, model: FunctionModel) -> None:
+def cites_unfetched(query: str) -> FunctionModel:
+    """find_exercise, then ShowLastSession for an exercise id it never fetched."""
+
+    def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        parts = messages[-1].parts
+        for p in parts:
+            if isinstance(p, RetryPromptPart):
+                print(f"  sent back  {p.content}")
+        returns = [p for p in parts if isinstance(p, ToolReturnPart)]
+        if not returns and not any(isinstance(p, RetryPromptPart) for p in parts):
+            return _call("find_exercise_tool", query=query)
+        return _call("final_result_ShowLastSession", exercise_id=999_999)
+
+    return FunctionModel(model)
+
+
+async def ask(conn: asyncpg.Connection, label: str, query: str, model: FunctionModel) -> None:
     agent = build_agent(Settings(openrouter_api_key=SecretStr("unused")))
     print(f"--- {label}")
     with agent.override(model=model):
-        async for event in stream_agent_message(conn, f"verify-demo-{label}", "last time?", agent):
-            if isinstance(event, ToolStart):
-                print(f"  step   {event.label}")
-            elif isinstance(event, ToolEnd):
-                print(f"  done   {event.tool}: {event.status}")
-            elif isinstance(event, Final):
-                print(f"  reply  {event.reply}")
-                mark = "✓ verified" if event.verified else "✗ not verified"
-                print(f"  check  {mark} against {event.checked} tool results")
+        try:
+            async for event in stream_agent_message(
+                conn, f"verify-demo-{label}", f"last time I did {query}?", agent
+            ):
+                if isinstance(event, ToolStart):
+                    print(f"  step   {event.label}")
+                elif isinstance(event, ToolEnd):
+                    print(f"  done   {event.tool}: {event.status}")
+                elif isinstance(event, Final):
+                    print("  reply  " + event.reply.replace("\n", "\n         "))
+                    mark = "✓ verified" if event.verified else "✗ not verified"
+                    print(f"  check  {mark} against {event.checked} tool results")
+        except Exception as e:  # what the API turns into an error event
+            print(f"  failed {type(e).__name__}: {e}")
+            print("  (nothing shown, nothing saved)")
     print()
 
 
@@ -79,8 +96,8 @@ async def main() -> None:
         tx = conn.transaction()
         await tx.start()
         try:
-            await ask(conn, "honest", scripted(query, Decimal("0")))
-            await ask(conn, "invents 5 kg", scripted(query, Decimal("5")))
+            await ask(conn, "fetches first", query, honest(query))
+            await ask(conn, "cites an unfetched session", query, cites_unfetched(query))
         finally:
             await tx.rollback()  # leave no demo chats behind
     finally:

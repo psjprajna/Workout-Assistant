@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from qdrant_client import AsyncQdrantClient
 
+from workout_agent.agents.outputs import AgentOutput
 from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.embeddings.index import Embedder
@@ -75,7 +76,7 @@ class RenameRequest(BaseModel):
 def create_app(
     route: Route,
     database_url: str,
-    agent: Agent[AgentDeps, str] | None = None,
+    agent: Agent[AgentDeps, AgentOutput] | None = None,
     qdrant_url: str | None = None,
     embedder: Embedder | None = None,
     history_turns: int = 10,
