@@ -3,12 +3,16 @@
 The agent decides which tools to call. stream_agent_message reports each tool call as it
 starts and ends, then the reply. Each answered turn is saved in Postgres
 (sessions/chat_store.py), and the last few turns go back to the model on the next one,
-so "the incline one" makes sense, even after a restart. A failed or abandoned run saves
-nothing. handle_agent_message is the same path for callers that only want the reply.
+so "the incline one" makes sense, even after a restart. Before a reply is shown, code
+checks every number in it against the tool results the model saw (this turn's, and those
+in the history it was given); a reply that fails is replaced by a refusal and not saved.
+A failed or abandoned run saves nothing. handle_agent_message is the same path for
+callers that only want the reply.
 """
 
 import asyncio
 from collections.abc import AsyncGenerator
+from typing import Any, cast
 
 import asyncpg
 from pydantic_ai import Agent, AgentRunResult
@@ -16,6 +20,7 @@ from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     ModelMessage,
+    ModelRequest,
     ToolReturnPart,
 )
 from pydantic_ai.usage import UsageLimits
@@ -26,6 +31,7 @@ from workout_agent.sessions.history import shrink_old_tool_results
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
 from workout_agent.workflow.events import ChatEvent, Error, Final, ToolEnd, ToolStart, tool_label
+from workout_agent.workflow.replies import UNVERIFIED_REPLY, verify_agent_reply
 
 BUSY_REPLY = "This chat is busy answering another message. Please send yours again."
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
@@ -36,6 +42,17 @@ def _tool_status(event: FunctionToolResultEvent) -> str:
     if isinstance(part, ToolReturnPart) and isinstance(part.content, dict):
         return str(part.content.get("status", "ok"))
     return "retry"  # the model sent bad arguments and is asked to try again
+
+
+def _tool_results_in(messages: list[ModelMessage]) -> list[dict[str, Any]]:
+    """The tool results in earlier turns, as the model is shown them (old ones shrunk)."""
+    return [
+        cast(dict[str, Any], part.content)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, ToolReturnPart) and isinstance(part.content, dict)
+    ]
 
 
 async def _run_agent(
@@ -105,6 +122,12 @@ async def stream_agent_message(
                 task.cancel()
                 await asyncio.wait({task})  # it must stop using conn before we go on
 
+        # Verification is code: every number must come from a tool result the model saw.
+        seen = _tool_results_in(history) + deps.evidence
+        if not verify_agent_reply(result.output, seen):
+            yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
+            return  # the request did not succeed, so nothing is saved
+
         title, is_fallback = chat_title(text, deps.evidence)
         try:
             # new_messages() is only this turn; older turns are already saved.
@@ -116,7 +139,7 @@ async def stream_agent_message(
             # Another message in this chat finished first; don't overwrite its turn.
             yield Error(message=BUSY_REPLY)
             return
-        yield Final(reply=result.output)
+        yield Final(reply=result.output, verified=True, checked=len(seen))
     finally:
         await unlock_chat(conn, chat_id)
 

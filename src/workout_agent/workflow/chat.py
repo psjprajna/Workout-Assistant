@@ -13,6 +13,7 @@ import asyncpg
 from workout_agent.tools.find_exercise import ExerciseMatch, FindResult, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
 from workout_agent.workflow.replies import (
+    UNVERIFIED_REPLY,
     format_find_question,
     format_last_session,
     verify_reply,
@@ -52,7 +53,7 @@ async def _answer(conn: asyncpg.Connection, exercise_id: int) -> str:
 
     # Every number in the reply must come from the tool result. If not, say nothing.
     if not verify_reply(reply, result):
-        return "I couldn't verify that answer, so I won't show it."
+        return UNVERIFIED_REPLY
     return reply
 
 

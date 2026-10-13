@@ -25,6 +25,9 @@ class ToolEnd(BaseModel):
 class Final(BaseModel):
     kind: Literal["final"] = "final"
     reply: str
+    # True when code checked every number in the reply against `checked` tool results.
+    verified: bool = False
+    checked: int = 0
 
 
 class Error(BaseModel):

@@ -2,11 +2,14 @@
 
 Nothing here calls a model. Every number in a reply is copied from a tool result,
 and verify_reply proves it by checking each number in a reply against the data.
+verify_agent_reply does the same for the agent's own wording, against every tool result
+the model was shown (the evidence dicts).
 """
 
 import re
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from workout_agent.tools.find_exercise import FindResult
 from workout_agent.tools.get_last_session import LastSessionResult
@@ -55,6 +58,19 @@ def format_find_question(result: FindResult, query: str) -> str:
 
 # --- Verification: prove a reply contains no number that is not in the data ---
 
+UNVERIFIED_REPLY = "I couldn't verify that answer, so I won't show it."
+
+
+def _numbers_in(text: str, names: list[str]) -> list[Decimal]:
+    """Every number in the text, as Decimal so "80" and "80.00" count as the same number.
+
+    Digits inside an exercise name ("Cable Fly 45 Degree") are not claims, so the names
+    are removed first, longest first so a shorter name can't cut into a longer one.
+    """
+    for name in sorted(names, key=len, reverse=True):
+        text = text.replace(name, "")
+    return [Decimal(token) for token in re.findall(r"\d+(?:\.\d+)?", text)]
+
 
 def _allowed_numbers(result: LastSessionResult) -> set[Decimal]:
     """Every number a reply is allowed to contain, taken from the tool result."""
@@ -71,12 +87,43 @@ def _allowed_numbers(result: LastSessionResult) -> set[Decimal]:
 
 def verify_reply(reply: str, result: LastSessionResult) -> bool:
     """True only if every number in the reply appears in the tool result."""
-    # Digits inside the exercise name ("Cable Fly 45 Degree") are not claims.
-    text = reply
-    if result.exercise_name:
-        text = text.replace(result.exercise_name, "")
-
-    # Compare as Decimal, so "80" and "80.00" count as the same number.
-    found = [Decimal(token) for token in re.findall(r"\d+(?:\.\d+)?", text)]
+    names = [result.exercise_name] if result.exercise_name else []
     allowed = _allowed_numbers(result)
-    return all(n in allowed for n in found)
+    return all(n in allowed for n in _numbers_in(reply, names))
+
+
+def _names_in_evidence(evidence: list[dict[str, Any]]) -> list[str]:
+    names = [e["exercise_name"] for e in evidence if e.get("exercise_name")]
+    names += [m["name"] for e in evidence for m in e.get("matches", [])]
+    return names
+
+
+def allowed_numbers_from_evidence(evidence: list[dict[str, Any]]) -> set[Decimal]:
+    """Every number a reply may contain, given the tool results (as the model saw them).
+
+    A last session gives its exercise id, the date's day, month and year (the model may
+    write "8 Feb 2026" or "2026-02-08"), each set's number, reps and weight, and how many
+    sets there were. A list of matches gives the ids and the list markers 1..n.
+    """
+    allowed: set[Decimal] = set()
+    for e in evidence:
+        if e.get("exercise_id") is not None:
+            allowed.add(Decimal(e["exercise_id"]))
+        if e.get("performed_on"):
+            d = date.fromisoformat(e["performed_on"])
+            allowed |= {Decimal(d.day), Decimal(d.month), Decimal(d.year)}
+        sets = e.get("sets", [])
+        if sets:
+            allowed.add(Decimal(len(sets)))
+        for s in sets:
+            allowed |= {Decimal(s["set_number"]), Decimal(s["reps"]), Decimal(s["weight_kg"])}
+        matches = e.get("matches", [])
+        allowed |= {Decimal(m["exercise_id"]) for m in matches}
+        allowed |= {Decimal(i) for i in range(1, len(matches) + 1)}
+    return allowed
+
+
+def verify_agent_reply(reply: str, evidence: list[dict[str, Any]]) -> bool:
+    """True only if every number in the agent's reply appears in the tool results."""
+    allowed = allowed_numbers_from_evidence(evidence)
+    return all(n in allowed for n in _numbers_in(reply, _names_in_evidence(evidence)))

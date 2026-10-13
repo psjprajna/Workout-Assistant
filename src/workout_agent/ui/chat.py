@@ -2,7 +2,8 @@
 
 Every message goes to the running API's POST /chat/stream (start uvicorn first), so the
 page, the API and the agent are all in the path. Each tool call shows as a step while it
-runs ("Searching your exercises for 'bench press'…"), then the reply arrives whole.
+runs ("Searching your exercises for 'bench press'…"), then the reply arrives whole, with
+a "✓ verified" line when code checked its numbers against the tool results.
 Each chat is a Chainlit thread; its id is the chat id the API saves turns under, so past
 chats show in the sidebar and can be reopened (ui/data_layer.py). There is one user,
 logged in automatically: no login form.
@@ -21,6 +22,10 @@ from workout_agent.ui.data_layer import USER, ApiDataLayer
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart
 
 _STATUS_TEXT = {"ok": "✓ ok"}
+
+
+def _results(n: int) -> str:
+    return f"{n} tool result" + ("" if n == 1 else "s")
 
 
 def _new_client() -> httpx.AsyncClient:
@@ -95,6 +100,8 @@ async def on_message(message: cl.Message) -> None:
                     await step.update()
             elif isinstance(event, Final):
                 reply = event.reply
+                if event.verified and event.checked:
+                    reply += f"\n\n*✓ verified against {_results(event.checked)}*"
             elif isinstance(event, Error):
                 reply = event.message
     finally:

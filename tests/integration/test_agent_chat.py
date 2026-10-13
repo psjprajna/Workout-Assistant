@@ -33,6 +33,7 @@ from workout_agent.workflow.agent_chat import (
     stream_agent_message,
 )
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart, chat_event_adapter
+from workout_agent.workflow.replies import UNVERIFIED_REPLY
 from workout_agent.workflow.simple_router import simple_route
 
 AGENT = build_agent(Settings(openrouter_api_key=SecretStr("test")))
@@ -178,7 +179,7 @@ async def test_stream_reports_each_tool_then_the_reply(conn, seeded):
         ToolEnd(tool="find_exercise_tool", status="ok"),
         ToolStart(tool="get_last_session_tool", label="Fetching your last session…"),
         ToolEnd(tool="get_last_session_tool", status="ok"),
-        Final(reply="80.00 kg"),
+        Final(reply="80.00 kg", verified=True, checked=2),
     ]
     assert await _turns(conn) == 1
 
@@ -232,7 +233,7 @@ async def test_chat_stream_endpoint_sends_sse_events(seeded, test_database_url):
 
     events = [chat_event_adapter.validate_json(line.removeprefix("data: ")) for line in lines]
     assert [e.kind for e in events] == ["tool_start", "tool_end", "tool_start", "tool_end", "final"]
-    assert events[-1] == Final(reply="80.00 kg")
+    assert events[-1] == Final(reply="80.00 kg", verified=True, checked=2)
 
 
 async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
@@ -248,3 +249,38 @@ async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
     data = [line for line in r.text.splitlines() if line.startswith("data: ")]
     assert len(data) == 1
     assert isinstance(chat_event_adapter.validate_json(data[0].removeprefix("data: ")), Error)
+
+
+# --- Verification: no number the tools did not return ---------------------------------
+
+
+def _answers(text: str):
+    """get_last_session for id 2, then reply with `text` whatever the tool said."""
+
+    def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        if any(isinstance(p, ToolReturnPart) for p in messages[-1].parts):
+            return ModelResponse(parts=[TextPart(text)])
+        return ModelResponse(parts=[ToolCallPart("get_last_session_tool", {"exercise_id": 2})])
+
+    return model
+
+
+async def test_an_invented_number_is_refused_and_not_saved(conn, seeded):
+    with AGENT.override(model=FunctionModel(_answers("You lifted 85.00 kg x 8."))):
+        events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
+
+    assert events[-1] == Final(reply=UNVERIFIED_REPLY, verified=False, checked=1)
+    assert await _turns(conn) == 0
+
+
+async def test_a_follow_up_may_use_numbers_from_earlier_tool_results(conn, seeded):
+    def no_tools(messages, info):
+        return ModelResponse(parts=[TextPart("That was 8 reps at 80 kg.")])
+
+    with AGENT.override(model=FunctionModel(FakeModel())):
+        await handle_agent_message(conn, "t1", "bench?", AGENT)
+    with AGENT.override(model=FunctionModel(no_tools)):  # answers from history alone
+        events = [e async for e in stream_agent_message(conn, "t1", "reps?", AGENT)]
+
+    assert events == [Final(reply="That was 8 reps at 80 kg.", verified=True, checked=1)]
+    assert await _turns(conn) == 2
