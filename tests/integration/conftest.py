@@ -70,7 +70,7 @@ async def conn():
     try:
         await apply_migrations(connection)
         await connection.execute(
-            "truncate chat_turns, chats, sets, exercise_logs, exercises cascade"
+            "truncate chat_turns, chats, sets, exercise_logs, exercises, routines cascade"
         )
         yield connection
     finally:

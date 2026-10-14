@@ -37,6 +37,14 @@ uv run chainlit create-secret    # copy the CHAINLIT_AUTH_SECRET=... line into .
 
 Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar.
 
+## Importing a Jefit export
+
+```sh
+uv run python scripts/load_jefit.py data/<your-export>.csv
+```
+
+Loads the workout history (exercises, logs, sets; weights before 2026 converted from lbs to kg) and the weekly routine (`routines`, `routine_days`, `planned_exercises` with a target rep count per set). History only grows: loading again adds nothing twice. The routine is replaced on every load, since it changes when edited in Jefit. Days Jefit marks as rest days (Arms) are stored with `in_rotation = false`. Bad rows are printed and skipped.
+
 ## Exercise search
 
 `find_exercise` tidies the phrase ("db" -> dumbbell), stops phrases about a day or workout, matches whole words against names and their other names, answers muscle phrases from muscle tags, fixes misspelt words, and only then searches by meaning in Qdrant. Other names, muscles and equipment live in `config/exercise_catalog.toml`.
