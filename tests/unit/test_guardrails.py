@@ -154,3 +154,29 @@ def test_an_answer_from_this_turn_is_allowed():
         "allow"
     )
     assert answer_only_from_this_turn(_ctx(), Help()).action == "allow"
+
+
+# --- workout_days ---------------------------------------------------------------------
+
+DAYS = {
+    "status": "ok",
+    "suggested_day_id": 3,
+    "data_through": "2026-10-05",
+    "days": [{"day_id": 3, "name": "Legs A", "in_rotation": True, "last_done": "2026-09-23"}],
+}
+
+
+def test_workout_days_inside_the_contract_is_allowed():
+    assert tool_result_guard(_ctx(), _result("workout_days_tool", DAYS)) is True
+
+
+def test_workout_days_with_an_extra_day_field_stops_the_run():
+    leaky = {**DAYS, "days": [{**DAYS["days"][0], "body_weight": 60}]}
+    with pytest.raises(ToolBlocked):
+        tool_result_guard(_ctx(), _result("workout_days_tool", leaky))
+
+
+def test_workout_days_twice_in_a_turn_is_sent_back():
+    call = ToolCallInfo(name="workout_days_tool", args={}, tool_call_id="w")
+    assert tool_call_guard(_ctx(), call).action == "allow"
+    assert tool_call_guard(_ctx([DAYS]), call).action == "retry"

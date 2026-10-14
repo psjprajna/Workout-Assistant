@@ -44,4 +44,8 @@ def tool_label(tool: str, args: dict[str, Any]) -> str:
         return f"Searching your exercises for '{args.get('query', '')}'…"
     if tool == "get_last_session_tool":
         return "Fetching your last session…"
+    if tool == "workout_days_tool":
+        return "Checking which workout day is next…"
+    if tool == "planned_day":
+        return "Fetching that day's exercises…"
     return f"Running {tool}…"

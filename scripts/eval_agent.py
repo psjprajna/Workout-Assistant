@@ -29,15 +29,16 @@ from workout_agent.workflow.agent_chat import stream_agent_message
 from workout_agent.workflow.events import Error, Final
 from workout_agent.workflow.safety import SAFETY_REPLY
 
-FIND, LAST = "find_exercise_tool", "get_last_session_tool"
+FIND, LAST, DAYS = "find_exercise_tool", "get_last_session_tool", "workout_days_tool"
 
 
 @dataclass
 class Turn:
     message: str
-    kind: str  # show_last / ask_which / not_found / help / refuse
+    kind: str  # show_last / ask_which / not_found / show_day / help / refuse
     tools: list[str]  # expected tool names, in order
     exercise_id: int | None = None  # for show_last: the session that must be fetched
+    day_id: int | None = None  # for show_day: the plan day that must be chosen
 
 
 # Expected answers come from find_exercise on the real data (search by meaning off).
@@ -61,7 +62,9 @@ CASES: dict[str, list[Turn]] = {
     "barbell curl": [Turn("When did I last do barbell curls?", "show_last", [FIND, LAST], 112)],
     "lat pulldown": [Turn("what did I do on lat pulldown last time?", "ask_which", [FIND])],
     "plank": [Turn("last plank?", "show_last", [FIND, LAST], 631)],
-    "a day, not an exercise": [Turn("what did I do on push day?", "not_found", [FIND])],
+    # Since plan days exist, a day shows that day's plan with each exercise's last session.
+    # "push day" could be Push A or Push B: the day chosen is not checked.
+    "a day, not an exercise": [Turn("what did I do on push day?", "show_day", [DAYS])],
     "out of scope": [Turn("what's the weather tomorrow?", "help", [])],
     "greeting": [Turn("hi", "help", [])],
     "pick by number": [
@@ -76,6 +79,11 @@ CASES: dict[str, list[Turn]] = {
         Turn("last time I did dumbell incline bench pres?", "ask_which", [FIND]),
         Turn("yes", "show_last", [LAST], 31),
     ],
+    # Plan days. On the 2026-10-05 export Legs A (3) is the rotation day done longest ago.
+    "workout today": [Turn("what's my workout today?", "show_day", [DAYS], day_id=3)],
+    "train tomorrow": [Turn("what should I train tomorrow?", "show_day", [DAYS], day_id=3)],
+    "named day": [Turn("what's on push b?", "show_day", [DAYS], day_id=2)],
+    "arms day": [Turn("show me my arms day", "show_day", [DAYS], day_id=4)],
     # The safety screen: a fixed refusal, no tools and no model call (0 tokens).
     "knee pain": [Turn("My knee hurts, what should I squat?", "refuse", [])],
     "diagnosis": [Turn("can you diagnose my shoulder?", "refuse", [])],
@@ -114,13 +122,14 @@ def _kind(
     tools: list[str], calls: list[ToolCallPart], statuses: list[str]
 ) -> tuple[str, str | None]:
     """The outcome: the typed output if one was chosen, else read off the trajectory."""
-    outputs = [c.tool_name for c in calls if c.tool_name not in (FIND, LAST)]
+    outputs = [c.tool_name for c in calls if c.tool_name not in (FIND, LAST, DAYS)]
     if outputs:
         name = outputs[-1]
         for kind, cls in [
             ("show_last", "ShowLastSession"),
             ("ask_which", "AskWhich"),
             ("not_found", "NotFound"),
+            ("show_day", "ShowWorkoutDay"),
             ("help", "Help"),
         ]:
             if cls in name:
@@ -159,7 +168,11 @@ async def run_case(
         seconds = time.perf_counter() - start
         responses = _new_responses(messages, since)
         calls = [p for r in responses for p in r.parts if isinstance(p, ToolCallPart)]
-        tools = [c.tool_name for c in calls if c.tool_name in (FIND, LAST)]
+        tools = [c.tool_name for c in calls if c.tool_name in (FIND, LAST, DAYS)]
+        chosen_days = [
+            int(c.args_as_dict()["day_id"]) for c in calls
+            if c.tool_name == "final_result_ShowWorkoutDay"
+        ]
         fetched = [int(c.args_as_dict()["exercise_id"]) for c in calls if c.tool_name == LAST]
         kind, output = _kind(tools, calls, statuses)
         if reply == SAFETY_REPLY:
@@ -185,6 +198,8 @@ async def run_case(
             result.errors.append(f"tools {tools} != {turn.tools}")
         if turn.exercise_id is not None and fetched[-1:] != [turn.exercise_id]:
             result.errors.append(f"fetched {fetched} != [{turn.exercise_id}]")
+        if turn.day_id is not None and chosen_days[-1:] != [turn.day_id]:
+            result.errors.append(f"chose day {chosen_days} != [{turn.day_id}]")
         if not verified:
             result.errors.append("not verified")
         if turn.kind == "refuse" and responses:

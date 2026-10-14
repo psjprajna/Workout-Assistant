@@ -27,12 +27,13 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import UsageLimits
 
-from workout_agent.agents.outputs import AgentOutput
-from workout_agent.agents.workout_agent import AgentDeps
+from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
+from workout_agent.agents.workout_agent import AgentDeps, jsonable
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
 from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
+from workout_agent.tools.workout_day import planned_day
 from workout_agent.workflow.events import ChatEvent, Error, Final, ToolEnd, ToolStart, tool_label
 from workout_agent.workflow.replies import (
     UNVERIFIED_REPLY,
@@ -128,6 +129,14 @@ async def stream_agent_message(
             if not task.done():
                 task.cancel()
                 await asyncio.wait({task})  # it must stop using conn before we go on
+
+        # A chosen day: code fetches its exercises now. The long list never goes to the
+        # model, but it is a tool result like any other: kept as evidence and checked.
+        if isinstance(result.output, ShowWorkoutDay):
+            yield ToolStart(tool="planned_day", label=tool_label("planned_day", {}))
+            planned = jsonable(await planned_day(conn, result.output.day_id))
+            deps.evidence.append(planned)
+            yield ToolEnd(tool="planned_day", status=planned["status"])
 
         # The model chose; code writes the words, only from this turn's tool results.
         # (The output validator already sent back any choice that cites what no tool

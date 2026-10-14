@@ -115,7 +115,7 @@ def test_reply_with_no_numbers_passes():
 
 # --- verify_agent_reply: the agent's own wording against the tool results it saw ------
 
-# Tool results as the agent stores them in deps.evidence (agents/workout_agent._jsonable).
+# Tool results as the agent stores them in deps.evidence (agents/workout_agent.jsonable).
 SESSION = {
     "status": "ok",
     "exercise_id": 2,

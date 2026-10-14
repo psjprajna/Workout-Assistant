@@ -7,7 +7,7 @@ call them directly without a model.
 - safety_guard: the safety screen, before any model call. A match raises SafetyRefused
   and the chat code writes the fixed refusal; the model never sees the message.
 - tool_call_guard: get_last_session only with an id a tool returned (this turn or an
-  earlier one), and no repeat of a call already answered this turn. Both are mistakes
+  earlier one), and no repeat of a call already answered this turn (any tool). Both are mistakes
   the model can fix, so they are sent back to it (retry).
 - tool_result_guard: every result keeps the docs/tools.md contract: a dict, an allowed
   status, only allowlisted keys (the privacy line), a few hundred tokens at most. A
@@ -53,6 +53,11 @@ _CONTRACT: dict[str, tuple[set[str], set[str], dict[str, set[str]]]] = {
         {"status", "exercise_id", "exercise_name", "performed_on", "exercise_log_id", "sets"},
         {"sets": {"set_number", "weight_kg", "reps"}},
     ),
+    "workout_days_tool": (
+        {"ok", "no_rows"},
+        {"status", "suggested_day_id", "data_through", "days"},
+        {"days": {"day_id", "name", "in_rotation", "last_done"}},
+    ),
 }
 
 ALREADY_HAVE = "you already have this result this turn; use it"
@@ -82,6 +87,9 @@ def tool_call_guard(ctx: RunContext["AgentDeps"], call: ToolCallInfo) -> Guardra
     if call.name == "find_exercise_tool":
         query = str(call.args["query"]).strip().casefold()
         if any(e.get("query", "").strip().casefold() == query for e in evidence):
+            return GuardrailResult.retry(ALREADY_HAVE)
+    elif call.name == "workout_days_tool":
+        if any("days" in e for e in evidence):
             return GuardrailResult.retry(ALREADY_HAVE)
     elif call.name == "get_last_session_tool":
         exercise_id = call.args["exercise_id"]

@@ -36,6 +36,8 @@ class ToolResult[T](BaseModel):
 
 Derived from §19 and §20. Fourteen tools in five groups.
 
+Built so far (2026-10-14): `find_exercise`, `last_session` (as `get_last_session`), and `next_rotation_day` with `planned_exercises` as `workout_days` (every plan day with the date it was last done, inferred from the logged exercises, and the suggested next day) and `planned_day` (one day's exercises, targets and last sessions). The model calls `workout_days`; code calls `planned_day` once the model has chosen a day, so the long list costs no model tokens.
+
 **Retrieval, read-only SQL and Qdrant**
 
 | Tool | Arguments | `data` on ok | Non-ok statuses |
