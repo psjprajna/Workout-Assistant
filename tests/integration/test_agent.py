@@ -2,8 +2,9 @@
 
 These call OpenRouter, so they cost a little money and need OPENROUTER_API_KEY in .env.
 They are marked `llm`: run them with `uv run pytest -m llm`, skip with `-m "not llm"`.
-The model's wording changes every run, so the tests check facts and evidence
-(did it call the tool? is every number from the data?), never exact sentences.
+The model answers with a typed choice and code writes the reply from the tool results
+(replies.render), so the tests render the reply the same way the chat does, then check
+facts and evidence (did it call the tool? is every number from the data?).
 
 The agent lives in src/workout_agent/agents/workout_agent.py (Session 2). Until that
 file exists the whole module is skipped, so the rest of the suite stays green.
@@ -21,6 +22,7 @@ from workout_agent.embeddings.index import index_exercises
 from workout_agent.embeddings.openrouter import embed
 from workout_agent.embeddings.search import search_exercises
 from workout_agent.settings import Settings
+from workout_agent.workflow.replies import render
 
 SEARCH_COLLECTION = "exercises_agent_test"
 
@@ -62,7 +64,7 @@ async def _ask(conn, question):
     deps = agent_module.AgentDeps(conn=conn, evidence=[])
     agent = agent_module.build_agent(Settings())
     result = await agent.run(question, deps=deps)
-    return result.output, deps.evidence
+    return render(result.output, deps.evidence), deps.evidence
 
 
 async def test_answers_last_session_from_the_data(conn):
@@ -110,8 +112,8 @@ async def test_picking_a_number_chooses_that_option(conn):
     deps2 = agent_module.AgentDeps(conn=conn, evidence=[])
     second = await agent.run("2", deps=deps2, message_history=first.all_messages())
 
-    assert second_name in second.output
-    assert "1." in first.output  # the options were shown as a numbered list
+    assert second_name in render(second.output, deps2.evidence)
+    assert "1." in render(first.output, deps.evidence)  # options shown as a numbered list
 
 
 async def _real_embedder(texts: list[str]) -> list[list[float]]:
@@ -143,7 +145,8 @@ async def test_meaning_match_offers_bench_press(conn, search):
     first = deps.evidence[0]
     assert first["status"] == "ambiguous"
     assert 2 in [m["exercise_id"] for m in first["matches"]]
-    assert "Barbell Bench Press" in result.output
-    assert "?" in result.output
+    reply = render(result.output, deps.evidence)
+    assert "Barbell Bench Press" in reply
+    assert "?" in reply
     # It offered the options; it did not pick one and answer.
     assert all("sets" not in e for e in deps.evidence)
