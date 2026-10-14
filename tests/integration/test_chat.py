@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from workout_agent.workflow.chat import RouteDecision, Session, handle_message
+from workout_agent.workflow.safety import SAFETY_REPLY
 
 
 def fake_route(decision: RouteDecision):
@@ -101,3 +102,10 @@ async def test_unknown_intent_states_what_it_can_do(conn):
     route = fake_route(RouteDecision(intent="unknown"))
     reply = await handle_message(conn, session, "what's the weather?", route)
     assert "last session" in reply
+
+async def test_a_safety_message_is_refused_before_the_router(conn):
+    async def route(text: str, has_pending: bool) -> RouteDecision:
+        raise AssertionError("the router must not see a refused message")
+
+    reply = await handle_message(conn, Session(), "my knee hurts, what should I squat?", route)
+    assert reply == SAFETY_REPLY

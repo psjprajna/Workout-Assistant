@@ -3,23 +3,32 @@
 It can look up an exercise (find_exercise) and fetch its last session
 (get_last_session). It answers with one typed choice (agents/outputs.py), never with
 text: code writes the reply from the tool results. Every tool result is copied into
-deps.evidence; an answer about an id no tool returned this turn is sent back to the
-model to fix (output validator), so it can't cite what it never fetched.
+deps.evidence. Guardrails (agents/guardrails.py) check the run's edges in code: the
+safety screen stops a message before any model call; a tool call with an id no tool
+returned, or a repeat, goes back to the model; a tool result outside its contract stops
+the run; an answer about an id no tool returned this turn goes back to the model, so it
+can't cite what it never fetched.
 """
 
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import asyncpg
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openrouter import OpenRouterModel, OpenRouterModelSettings
 from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai_harness.guardrails import InputGuardrail, OutputGuardrail, ToolGuardrail
 
+from workout_agent.agents.guardrails import (
+    answer_only_from_this_turn,
+    safety_guard,
+    tool_call_guard,
+    tool_result_guard,
+)
 from workout_agent.agents.outputs import OUTPUT_TYPES, AgentOutput
 from workout_agent.settings import Settings
 from workout_agent.tools.find_exercise import Searcher, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
-from workout_agent.workflow.replies import check_output
 
 MODEL_NAME = "qwen/qwen3.5-35b-a3b"
 
@@ -78,17 +87,13 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
         output_type=OUTPUT_TYPES,  # tool output mode: one output tool per choice
         instructions=INSTRUCTIONS,
         model_settings=model_settings,
-        retries={"output": 2},  # room to fix an answer the validator sends back
+        retries={"output": 2},  # room to fix an answer the output guardrail sends back
+        capabilities=[
+            InputGuardrail(guard=safety_guard),  # sequential: no model call when it trips
+            ToolGuardrail(guard=tool_call_guard, result_guard=tool_result_guard),
+            OutputGuardrail(guard=answer_only_from_this_turn),
+        ],
     )
-
-    @agent.output_validator
-    def answer_only_from_this_turn(
-        ctx: RunContext[AgentDeps], output: AgentOutput
-    ) -> AgentOutput:
-        problem = check_output(output, ctx.deps.evidence)
-        if problem is not None:
-            raise ModelRetry(problem)
-        return output
 
     @agent.tool
     async def find_exercise_tool(ctx: RunContext[AgentDeps], query: str) -> dict[str, Any]:

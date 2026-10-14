@@ -8,13 +8,14 @@ choice; code writes the reply from this turn's tool results (replies.render). Be
 reply is shown, code also checks every number in it against the tool results the model
 saw (this turn's, and those in the history it was given); a reply that fails is replaced
 by a refusal and not saved.
-A failed or abandoned run saves nothing. handle_agent_message is the same path for
-callers that only want the reply.
+A message the safety screen refuses gets the fixed refusal, with no model call; the turn
+is saved without model messages. A failed or abandoned run saves nothing.
+handle_agent_message is the same path for callers that only want the reply.
 """
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any, cast
+from typing import Any
 
 import asyncpg
 from pydantic_ai import Agent, AgentRunResult
@@ -22,7 +23,6 @@ from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     ModelMessage,
-    ModelRequest,
     ToolReturnPart,
 )
 from pydantic_ai.usage import UsageLimits
@@ -30,7 +30,7 @@ from pydantic_ai.usage import UsageLimits
 from workout_agent.agents.outputs import AgentOutput
 from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
-from workout_agent.sessions.history import shrink_old_tool_results
+from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
 from workout_agent.workflow.events import ChatEvent, Error, Final, ToolEnd, ToolStart, tool_label
@@ -40,6 +40,7 @@ from workout_agent.workflow.replies import (
     render,
     verify_agent_reply,
 )
+from workout_agent.workflow.safety import SafetyRefused
 
 BUSY_REPLY = "This chat is busy answering another message. Please send yours again."
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
@@ -50,17 +51,6 @@ def _tool_status(event: FunctionToolResultEvent) -> str:
     if isinstance(part, ToolReturnPart) and isinstance(part.content, dict):
         return str(part.content.get("status", "ok"))
     return "retry"  # the model sent bad arguments and is asked to try again
-
-
-def _tool_results_in(messages: list[ModelMessage]) -> list[dict[str, Any]]:
-    """The tool results in earlier turns, as the model is shown them (old ones shrunk)."""
-    return [
-        cast(dict[str, Any], part.content)
-        for message in messages
-        if isinstance(message, ModelRequest)
-        for part in message.parts
-        if isinstance(part, ToolReturnPart) and isinstance(part.content, dict)
-    ]
 
 
 async def _run_agent(
@@ -125,6 +115,15 @@ async def stream_agent_message(
             while (event := await queue.get()) is not None:
                 yield event
             result = await task  # raises if the run failed
+        except SafetyRefused as refused:
+            # The safety screen matched before any model call: the fixed refusal is the
+            # reply. The turn is saved without model messages, so the chat shows it but
+            # the model never sees the refused text.
+            if await _save(conn, chat_id, last_turn + 1, text, refused.reply, [], []):
+                yield Final(reply=refused.reply, verified=True, checked=0)
+            else:
+                yield Error(message=BUSY_REPLY)
+            return
         finally:
             if not task.done():
                 task.cancel()
@@ -140,25 +139,37 @@ async def stream_agent_message(
             return
 
         # Verification is code: every number must come from a tool result the model saw.
-        seen = _tool_results_in(history) + deps.evidence
+        seen = tool_results_in(history) + deps.evidence
         if not verify_agent_reply(reply, seen):
             yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
             return  # the request did not succeed, so nothing is saved
 
-        title, is_fallback = chat_title(text, deps.evidence)
-        try:
-            # new_messages() is only this turn; older turns are already saved.
-            await save_turn(
-                conn, chat_id, last_turn + 1, text, reply,
-                result.new_messages(), deps.evidence, title, is_fallback,
-            )
-        except asyncpg.UniqueViolationError:
-            # Another message in this chat finished first; don't overwrite its turn.
+        # new_messages() is only this turn; older turns are already saved.
+        new_messages = result.new_messages()
+        if not await _save(conn, chat_id, last_turn + 1, text, reply, new_messages, deps.evidence):
             yield Error(message=BUSY_REPLY)
             return
         yield Final(reply=reply, verified=True, checked=len(seen))
     finally:
         await unlock_chat(conn, chat_id)
+
+
+async def _save(
+    conn: asyncpg.Connection,
+    chat_id: str,
+    turn_no: int,
+    text: str,
+    reply: str,
+    messages: list[ModelMessage],
+    evidence: list[dict[str, Any]],
+) -> bool:
+    """Save one answered turn. False if another message in this chat saved it first."""
+    title, is_fallback = chat_title(text, evidence)
+    try:
+        await save_turn(conn, chat_id, turn_no, text, reply, messages, evidence, title, is_fallback)
+    except asyncpg.UniqueViolationError:
+        return False  # another message in this chat finished first; don't overwrite it
+    return True
 
 
 async def handle_agent_message(

@@ -7,7 +7,7 @@ Pure code, no model.
 """
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, UserPromptPart
 
@@ -47,3 +47,14 @@ def shrink_old_tool_results(
             message = replace(message, parts=parts)
         shrunk.append(message)
     return shrunk + messages[cut:]
+
+
+def tool_results_in(messages: list[ModelMessage]) -> list[dict[str, Any]]:
+    """The tool results in these messages, as the model is shown them (old ones shrunk)."""
+    return [
+        cast(dict[str, Any], part.content)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, ToolReturnPart) and isinstance(part.content, dict)
+    ]

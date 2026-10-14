@@ -19,6 +19,7 @@ from workout_agent.workflow.replies import (
     format_last_session,
     verify_reply,
 )
+from workout_agent.workflow.safety import screen
 
 
 @dataclass
@@ -59,6 +60,11 @@ async def handle_message(
     text: str,
     route: Route,
 ) -> str:
+    # Step 0: the safety screen, before any router or model.
+    refusal = screen(text)
+    if refusal is not None:
+        return refusal
+
     # Step 1: ask the router what this message means.
     decision = await route(text, session.pending is not None)
 

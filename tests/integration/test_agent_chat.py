@@ -9,6 +9,7 @@ FunctionModel answers the way the real one must: by calling an output tool
 """
 
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any, cast
 
 import asyncpg
@@ -25,11 +26,14 @@ from pydantic_ai.messages import (
     ToolReturnPart,
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai_harness.guardrails import ToolBlocked
 
+from workout_agent.agents import workout_agent
 from workout_agent.agents.workout_agent import build_agent
 from workout_agent.api.app import create_app
 from workout_agent.sessions import chat_store
 from workout_agent.settings import Settings
+from workout_agent.tools.get_last_session import LastSessionResult, get_last_session
 from workout_agent.workflow import agent_chat
 from workout_agent.workflow.agent_chat import (
     BUSY_REPLY,
@@ -38,6 +42,7 @@ from workout_agent.workflow.agent_chat import (
 )
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart, chat_event_adapter
 from workout_agent.workflow.replies import HELP_TEXT
+from workout_agent.workflow.safety import SAFETY_REPLY
 from workout_agent.workflow.simple_router import simple_route
 
 AGENT = build_agent(Settings(openrouter_api_key=SecretStr("test")))
@@ -56,7 +61,7 @@ def call(tool: str, **args: Any) -> ModelResponse:
 
 
 class FakeModel:
-    """Each turn: get_last_session for bench press (id 2), then choose ShowLastSession.
+    """Each turn: find bench press, get_last_session for it (id 2), choose ShowLastSession.
 
     Remembers the messages it was given at the start of every turn.
     """
@@ -67,12 +72,12 @@ class FakeModel:
     def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         last = messages[-1]
         returns = [p for p in last.parts if isinstance(p, ToolReturnPart)]
+        if returns and returns[0].tool_name == "find_exercise_tool":
+            return call("get_last_session_tool", exercise_id=2)
         if returns:
             return choose("ShowLastSession", exercise_id=2)
         self.seen.append(list(messages))
-        return ModelResponse(
-            parts=[ToolCallPart("get_last_session_tool", {"exercise_id": 2}, f"c{len(self.seen)}")]
-        )
+        return call("find_exercise_tool", query="barbell bench press")
 
 
 @asynccontextmanager
@@ -108,9 +113,8 @@ async def test_second_turn_sees_the_first_after_a_restart(seeded, test_database_
 
     assert model.seen[0][:-1] == []  # turn 1: no history, just the question
     history = model.seen[1]
-    returns = _tool_returns(history)
-    assert returns[0].tool_name == "get_last_session_tool"
-    session = cast(dict[str, Any], returns[0].content)
+    sessions = [r for r in _tool_returns(history) if r.tool_name == "get_last_session_tool"]
+    session = cast(dict[str, Any], sessions[0].content)
     assert session["sets"][0]["weight_kg"] == "80.00"  # recent turn kept whole
 
     chats = await _list(test_database_url)
@@ -274,16 +278,17 @@ async def test_an_answer_about_an_unfetched_id_is_sent_back_to_the_model(conn, s
         retry = [p for p in parts if isinstance(p, RetryPromptPart)]
         if retry:  # told to fetch first: does so
             retries.append(str(retry[0].content))
+            return call("find_exercise_tool", query="barbell bench press")
+        returns = [p for p in parts if isinstance(p, ToolReturnPart)]
+        if returns and returns[0].tool_name == "find_exercise_tool":
             return call("get_last_session_tool", exercise_id=2)
-        if any(isinstance(p, ToolReturnPart) for p in parts):
-            return choose("ShowLastSession", exercise_id=2)
-        return choose("ShowLastSession", exercise_id=2)  # answers without fetching
+        return choose("ShowLastSession", exercise_id=2)  # first: answers without fetching
 
     with AGENT.override(model=FunctionModel(model)):
         events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
 
     assert "get_last_session was not called for exercise_id 2" in retries[0]
-    assert events[-1] == Final(reply=BENCH_REPLY, verified=True, checked=1)
+    assert events[-1] == Final(reply=BENCH_REPLY, verified=True, checked=2)
 
 
 async def test_a_model_that_keeps_citing_unfetched_ids_saves_nothing(conn, seeded):
@@ -327,3 +332,65 @@ async def test_ask_which_then_a_number_shows_that_option(conn, seeded):
     second = question.splitlines()[-1].removeprefix("2. ")
     assert answer.startswith(f"Last time you did {second} was")
     assert await _turns(conn) == 2
+
+
+# --- Guardrails: the safety screen, tool calls and tool results ----------------------
+
+
+async def test_a_safety_message_is_refused_without_calling_the_model(conn, seeded):
+    def never(messages, info):
+        raise AssertionError("the model must not see a refused message")
+
+    with AGENT.override(model=FunctionModel(never)):
+        events = [
+            e async for e in stream_agent_message(conn, "t1", "my knee hurts, squat?", AGENT)
+        ]
+    assert events == [Final(reply=SAFETY_REPLY, verified=True, checked=0)]
+
+    # Saved, so the chat shows it after a reload, but with no model messages.
+    turns = await conn.fetch("select user_text, reply_text, messages from chat_turns")
+    assert [(t["user_text"], t["reply_text"]) for t in turns] == [
+        ("my knee hurts, squat?", SAFETY_REPLY)
+    ]
+    model = FakeModel()
+    with AGENT.override(model=FunctionModel(model)):
+        assert await handle_agent_message(conn, "t1", "bench?", AGENT) == BENCH_REPLY
+    assert model.seen[0][:-1] == []  # the next turn's model never sees the refused text
+
+
+async def test_a_made_up_id_is_sent_back_until_find_exercise_is_called(conn, seeded):
+    retries: list[str] = []
+
+    def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        parts = messages[-1].parts
+        retry = [p for p in parts if isinstance(p, RetryPromptPart)]
+        if retry:
+            retries.append(str(retry[0].content))
+            return call("find_exercise_tool", query="barbell bench press")
+        returns = [p for p in parts if isinstance(p, ToolReturnPart)]
+        if returns and returns[0].tool_name == "find_exercise_tool":
+            return call("get_last_session_tool", exercise_id=2)
+        if returns:
+            return choose("ShowLastSession", exercise_id=2)
+        return call("get_last_session_tool", exercise_id=2)  # guesses the id
+
+    with AGENT.override(model=FunctionModel(model)):
+        reply = await handle_agent_message(conn, "t1", "bench?", AGENT)
+
+    assert retries == ["exercise_id 2 did not come from find_exercise; call find_exercise first"]
+    assert reply == BENCH_REPLY
+
+
+@dataclass
+class _Leaky(LastSessionResult):
+    birth_date: str = "1990-01-01"  # a field no tool may ever return
+
+
+async def test_a_tool_result_outside_the_contract_stops_the_run(conn, seeded, monkeypatch):
+    async def leaky(conn, exercise_id):
+        return _Leaky(**vars(await get_last_session(conn, exercise_id)))
+
+    monkeypatch.setattr(workout_agent, "get_last_session", leaky)
+    with AGENT.override(model=FunctionModel(FindThenFetch())), pytest.raises(ToolBlocked):
+        await handle_agent_message(conn, "t1", "bench?", AGENT)
+    assert await _turns(conn) == 0
