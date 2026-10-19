@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr | None = None
     typesafe_api_key: SecretStr | None = None
 
+    # Langfuse tracing (docker-compose.yml). Off unless both keys are set.
+    langfuse_public_key: SecretStr | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_host: str = "http://localhost:3000"
+
     # Configuration to read from .env file
     model_config = SettingsConfigDict(
         env_file=".env",

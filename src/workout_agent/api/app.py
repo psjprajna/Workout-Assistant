@@ -29,6 +29,7 @@ from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.embeddings.index import Embedder
 from workout_agent.embeddings.search import search_exercises
+from workout_agent.observability import flush_tracing
 from workout_agent.sessions import chat_store
 from workout_agent.workflow.agent_chat import handle_agent_message, stream_agent_message
 from workout_agent.workflow.chat import Route, Session, handle_message
@@ -98,10 +99,11 @@ def create_app(
             qdrant = AsyncQdrantClient(url=qdrant_url)
             app.state.search = partial(search_exercises, qdrant, embedder)
         yield
-        # Shutdown: close the pool and the Qdrant client cleanly.
+        # Shutdown: close the pool and the Qdrant client cleanly; send any buffered traces.
         await app.state.pool.close()
         if qdrant is not None:
             await qdrant.close()
+        flush_tracing()
 
     app = FastAPI(title="Workout Agent", lifespan=lifespan)
 

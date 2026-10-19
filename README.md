@@ -22,7 +22,7 @@ Next: phase 1 of the build order in `docs/amendments.md` §27.
 ## Running the chat
 
 ```sh
-docker compose up -d                                            # Postgres and Qdrant
+docker compose up -d                                            # Postgres, Qdrant, Langfuse
 uv run uvicorn workout_agent.api.main:app --reload              # API on :8000
 uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :8001
 ```
@@ -36,6 +36,24 @@ uv run chainlit create-secret    # copy the CHAINLIT_AUTH_SECRET=... line into .
 ```
 
 Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar.
+
+## Tracing and agent evals (Langfuse)
+
+Langfuse runs in the same `docker compose up -d`, at http://localhost:3000 (login `admin@localhost.dev` / `workout-admin`, local only). Put the app's keys in `.env` before the first start; Compose creates the project with them:
+
+```sh
+LANGFUSE_PUBLIC_KEY=pk-lf-<random>
+LANGFUSE_SECRET_KEY=sk-lf-<random>
+LANGFUSE_HOST=http://localhost:3000
+```
+
+With the keys set, every agent message is a `chat-turn` trace: the agent run, each model call (tokens, latency) and each tool call (arguments, result), with the chat id as the session. Without them tracing is off and nothing else changes.
+
+```sh
+uv run python scripts/eval_agent.py my-change
+```
+
+uploads the cases in `src/workout_agent/evals/agent.py` as the dataset `agent-turns` and runs them as an experiment named `<date>-my-change`: one trace per case, scores per case (all checks, kind, trajectory, verified, tokens) and run scores for the `docs/amendments.md` §9 budgets (`budget_*`). Compare runs under Datasets -> agent-turns. The summary is also saved to `evals/results/`.
 
 ## Importing a Jefit export
 

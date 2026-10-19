@@ -29,6 +29,7 @@ from pydantic_ai.usage import UsageLimits
 
 from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
 from workout_agent.agents.workout_agent import AgentDeps, jsonable
+from workout_agent.observability import TurnTrace
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
 from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
@@ -99,68 +100,86 @@ async def stream_agent_message(
     history_turns: int = 10,
     full_tool_turns: int = 2,
 ) -> AsyncGenerator[ChatEvent]:
-    # Turn a second message away before any work, not after the user watched it run.
-    if not await try_lock_chat(conn, chat_id):
-        yield Error(message=BUSY_REPLY)
-        return
+    # The trace for this turn; finish() records how it ended (observability.py).
+    turn = TurnTrace(chat_id, text)
+    outcome, final_reply, verified = "error", None, None
     try:
-        history, last_turn = await load_history(conn, chat_id, history_turns)
-        history = shrink_old_tool_results(history, full_tool_turns)
-        deps = AgentDeps(conn=conn, search=search)  # fresh evidence list for each question
-        # The run happens in its own task and hands events over through a queue: the
-        # agent's internals must start and finish in one task, and this generator may
-        # be closed early (the client went away), which then just cancels that task.
-        queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
-        task = asyncio.create_task(_run_agent(agent, text, deps, history, queue))
-        try:
-            while (event := await queue.get()) is not None:
-                yield event
-            result = await task  # raises if the run failed
-        except SafetyRefused as refused:
-            # The safety screen matched before any model call: the fixed refusal is the
-            # reply. The turn is saved without model messages, so the chat shows it but
-            # the model never sees the refused text.
-            if await _save(conn, chat_id, last_turn + 1, text, refused.reply, [], []):
-                yield Final(reply=refused.reply, verified=True, checked=0)
-            else:
-                yield Error(message=BUSY_REPLY)
-            return
-        finally:
-            if not task.done():
-                task.cancel()
-                await asyncio.wait({task})  # it must stop using conn before we go on
-
-        # A chosen day: code fetches its exercises now. The long list never goes to the
-        # model, but it is a tool result like any other: kept as evidence and checked.
-        if isinstance(result.output, ShowWorkoutDay):
-            yield ToolStart(tool="planned_day", label=tool_label("planned_day", {}))
-            planned = jsonable(await planned_day(conn, result.output.day_id))
-            deps.evidence.append(planned)
-            yield ToolEnd(tool="planned_day", status=planned["status"])
-
-        # The model chose; code writes the words, only from this turn's tool results.
-        # (The output validator already sent back any choice that cites what no tool
-        # returned, so this failing means a bug; it is still never shown or saved.)
-        try:
-            reply = render(result.output, deps.evidence)
-        except RenderError:
-            yield Error(message=UNVERIFIED_REPLY)
-            return
-
-        # Verification is code: every number must come from a tool result the model saw.
-        seen = tool_results_in(history) + deps.evidence
-        if not verify_agent_reply(reply, seen):
-            yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
-            return  # the request did not succeed, so nothing is saved
-
-        # new_messages() is only this turn; older turns are already saved.
-        new_messages = result.new_messages()
-        if not await _save(conn, chat_id, last_turn + 1, text, reply, new_messages, deps.evidence):
+        # Turn a second message away before any work, not after the user watched it run.
+        if not await try_lock_chat(conn, chat_id):
+            outcome = "busy"
             yield Error(message=BUSY_REPLY)
             return
-        yield Final(reply=reply, verified=True, checked=len(seen))
+        try:
+            history, last_turn = await load_history(conn, chat_id, history_turns)
+            history = shrink_old_tool_results(history, full_tool_turns)
+            deps = AgentDeps(conn=conn, search=search)  # fresh evidence list for each question
+            # The run happens in its own task and hands events over through a queue: the
+            # agent's internals must start and finish in one task, and this generator may
+            # be closed early (the client went away), which then just cancels that task.
+            # The task runs in the turn's trace context, so its spans nest under the turn.
+            queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
+            task = asyncio.create_task(
+                _run_agent(agent, text, deps, history, queue), context=turn.context
+            )
+            try:
+                while (event := await queue.get()) is not None:
+                    yield event
+                result = await task  # raises if the run failed
+            except SafetyRefused as refused:
+                # The safety screen matched before any model call: the fixed refusal is the
+                # reply. The turn is saved without model messages, so the chat shows it but
+                # the model never sees the refused text.
+                if await _save(conn, chat_id, last_turn + 1, text, refused.reply, [], []):
+                    outcome, final_reply, verified = "refused", refused.reply, True
+                    yield Final(reply=refused.reply, verified=True, checked=0)
+                else:
+                    outcome = "busy"
+                    yield Error(message=BUSY_REPLY)
+                return
+            finally:
+                if not task.done():
+                    task.cancel()
+                    await asyncio.wait({task})  # it must stop using conn before we go on
+
+            # A chosen day: code fetches its exercises now. The long list never goes to the
+            # model, but it is a tool result like any other: kept as evidence and checked.
+            if isinstance(result.output, ShowWorkoutDay):
+                yield ToolStart(tool="planned_day", label=tool_label("planned_day", {}))
+                planned = jsonable(await planned_day(conn, result.output.day_id))
+                deps.evidence.append(planned)
+                yield ToolEnd(tool="planned_day", status=planned["status"])
+
+            # The model chose; code writes the words, only from this turn's tool results.
+            # (The output validator already sent back any choice that cites what no tool
+            # returned, so this failing means a bug; it is still never shown or saved.)
+            try:
+                reply = render(result.output, deps.evidence)
+            except RenderError:
+                outcome = "render_error"
+                yield Error(message=UNVERIFIED_REPLY)
+                return
+
+            # Verification is code: every number must come from a tool result the model saw.
+            seen = tool_results_in(history) + deps.evidence
+            if not verify_agent_reply(reply, seen):
+                outcome, final_reply, verified = "unverified", reply, False
+                yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
+                return  # the request did not succeed, so nothing is saved
+
+            # new_messages() is only this turn; older turns are already saved.
+            new_messages = result.new_messages()
+            if not await _save(
+                conn, chat_id, last_turn + 1, text, reply, new_messages, deps.evidence
+            ):
+                outcome = "busy"
+                yield Error(message=BUSY_REPLY)
+                return
+            outcome, final_reply, verified = type(result.output).__name__, reply, True
+            yield Final(reply=reply, verified=True, checked=len(seen))
+        finally:
+            await unlock_chat(conn, chat_id)
     finally:
-        await unlock_chat(conn, chat_id)
+        turn.finish(outcome, final_reply, verified)
 
 
 async def _save(
