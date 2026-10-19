@@ -95,6 +95,9 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
         temperature=0,
         # Your workout data goes to the model provider: refuse providers that train on it.
         openrouter_provider={"data_collection": "deny", "allow_fallbacks": False},
+        # Reasoning stays at the model's default (on, ~70 tokens a turn). Turning it off
+        # (effort "none") was faster, but the model then repeated tool calls and trajectory
+        # accuracy fell from 93% to 60-67% (evals/results/agent-2026-10-19-reasoning-off*).
     )
 
     agent: Agent[AgentDeps, AgentOutput] = Agent(
