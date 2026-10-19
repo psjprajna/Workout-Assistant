@@ -38,23 +38,19 @@ from workout_agent.tools.workout_day import workout_days
 MODEL_NAME = "qwen/qwen3.5-35b-a3b"
 
 INSTRUCTIONS = (
-    "You answer questions about the user's workout log by choosing one final output. "
-    "You never write the answer text: code writes it from the tool results. "
+    "Answer by choosing one final output; code writes the text from the tool results. "
     "When the user names an exercise, call find_exercise with their words. "
-    "If it returns 'ok', call get_last_session with that exercise_id, then choose "
-    "ShowLastSession with the same exercise_id. "
-    "If it returns 'ambiguous', choose AskWhich with the option ids in exactly the order "
-    "returned, even when there is only one option; do not call get_last_session for them. "
-    "If it returns 'no_rows', choose NotFound. "
-    "If the user answers your last AskWhich with a number, that is the position in that "
-    "list; with 'yes' to a single option, it is that option. Call get_last_session with "
-    "that exercise_id, then choose ShowLastSession. "
-    "To show any session, call get_last_session in this turn, even if you fetched it "
-    "before. Never use an exercise id you did not get from a tool. "
-    "When the user asks what to train today, tomorrow or next, or what is on a plan day "
-    "(\"what's on Push B?\"), call workout_days, then choose ShowWorkoutDay with its "
-    "suggested_day_id, or with the day_id of the day they named. "
-    "For greetings and anything else, choose Help."
+    "'ok': call get_last_session with its exercise_id, then choose ShowLastSession. "
+    "'ambiguous': choose AskWhich with the option ids in the order returned, even for one "
+    "option; do not call get_last_session. 'no_rows': choose NotFound. "
+    "A reply to your last AskWhich picks an option: a number is its position, 'yes' is the "
+    "only option. Call get_last_session with that id, then choose ShowLastSession. "
+    "Always call get_last_session in this turn before ShowLastSession, and use only ids a "
+    "tool returned. "
+    "For what to train today, tomorrow or next, or what is on a plan day, call "
+    "workout_days, then choose ShowWorkoutDay with suggested_day_id, or the day_id of the "
+    "day they named. "
+    "For anything else, choose Help."
 )
 
 
@@ -116,10 +112,7 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
 
     @agent.tool
     async def find_exercise_tool(ctx: RunContext[AgentDeps], query: str) -> dict[str, Any]:
-        """Find an exercise by name. Returns status ok / ambiguous / no_rows and matches.
-
-        Use this whenever the user names an exercise.
-        """
+        """Find an exercise by name: status ok / ambiguous / no_rows, with matches."""
         data = jsonable(await find_exercise(ctx.deps.conn, query, ctx.deps.search))
         # The evidence also keeps the words searched for: replies quote them back.
         ctx.deps.evidence.append({**data, "query": query})
@@ -127,21 +120,14 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
 
     @agent.tool
     async def get_last_session_tool(ctx: RunContext[AgentDeps], exercise_id: int) -> dict[str, Any]:
-        """Get the most recent session (date, weights in kg, reps) for one exercise id.
-
-        Only call this with an exercise_id returned by find_exercise.
-        """
+        """The last session (date, weights in kg, reps) of one exercise id."""
         data = jsonable(await get_last_session(ctx.deps.conn, exercise_id))
         ctx.deps.evidence.append(data)
         return data
 
     @agent.tool
     async def workout_days_tool(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
-        """List the plan days, when each was last done, and suggested_day_id.
-
-        suggested_day_id is the rotation day done longest ago: the next workout. Use this
-        for "what should I train today / tomorrow / next?" and "what's on <day>?".
-        """
+        """The plan days, when each was last done, and suggested_day_id: the next workout."""
         data = jsonable(await workout_days(ctx.deps.conn, ctx.deps.today))
         ctx.deps.evidence.append(data)
         return data
