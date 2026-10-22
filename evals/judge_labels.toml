@@ -285,3 +285,65 @@ message = "What did I lift last time on barbell bench press?"
 answers_question = true
 clear_and_brief = true
 note = "claude"
+
+# --- real bad replies from the 2026-10-22 broken runs (labelled by claude) -----------
+# The provider sent two tool calls at once and the agent failed (see docs/amendments.md
+# section 25). Nearly every failed reply is the same InterfaceError string, so only a
+# spread of messages is labelled, plus the two other kinds of bad reply. Labelled by
+# Claude at the owner's request, not by the owner.
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "after a refusal"
+message = "When did I last do barbell curls?"
+answers_question = false
+clear_and_brief = false
+note = "claude: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "arms day"
+message = "show me my arms day"
+answers_question = false
+clear_and_brief = false
+note = "claude: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "say yes"
+message = "yes"
+answers_question = false
+clear_and_brief = false
+note = "claude: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "unknown"
+message = "last time I did zzz?"
+answers_question = false
+clear_and_brief = false
+note = "claude: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "exact name"
+message = "What did I lift last time on barbell bench press?"
+answers_question = false
+clear_and_brief = false
+note = "claude: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "pick by number"
+message = "1"
+answers_question = false
+clear_and_brief = true
+note = "claude: The user picked option 1 of the bench press list; the reply says '1' is not in the data. Short and readable, but wrong. The judge sees no earlier turn, so it may read this as a fair reply."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-2.json"
+case = "say yes"
+message = "yes"
+answers_question = false
+clear_and_brief = false
+note = "claude: UnexpectedModelBehavior text shown to the user, not an answer."

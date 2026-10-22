@@ -1,0 +1,465 @@
+{
+  "judge": "typesafe:jev-latest",
+  "mode": "labels",
+  "summary": {
+    "judged": 40,
+    "errors": 0,
+    "answers_question": {
+      "agree": 34,
+      "always_yes": 25,
+      "of": 40
+    },
+    "clear_and_brief": {
+      "agree": 39,
+      "always_yes": 30,
+      "of": 40
+    },
+    "overall": {
+      "agree": 73,
+      "always_yes": 55,
+      "of": 80
+    }
+  },
+  "rows": [
+    {
+      "case": "after a refusal",
+      "message": "When did I last do barbell curls?",
+      "reply": "Last time you did Barbell Curl was 3 Feb 2023:\n- Set 1: 13.61 kg x 15\n- Set 2: 13.61 kg x 15\n- Set 3: 13.61 kg x 15\n- Set 4: 13.61 kg x 15",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "arms day",
+      "message": "show me my arms day",
+      "reply": "Arms, last done on 29 Aug 2026:\n\n1. Dumbbell Lateral Raise: 4 sets of 12, 10, 10, 4 reps; last time (5 Oct 2026): 5.00 kg x 10, 5.00 kg x 10, 5.00 kg x 10\n2. Cable Reverse Fly: 3 sets of 14, 12, 12 reps; last time (17 Sep 2026): 4.00 kg x 15, 4.00 kg x 16, 4.00 kg x 18\n3. Machine Reverse Fly: 3 sets of 12, 8, 4 reps; last time (2 Oct 2026): 20.00 kg x 10, 20.00 kg x 15, 15.00 kg x 20\n4. Cable Rope Face Pull: 4 sets of 15, 14, 10, 8 reps; last time (25 Sep 2026): 20.00 kg x 10, 30.00 kg x 15, 35.00 kg x 15\n5. Cable One-Arm Lateral Raise: 3 sets of 12, 6, 8 reps; last time (5 Oct 2026): 5.00 kg x 15, 5.00 kg x 12, 5.00 kg x 15\n6. Barbell Upright Row: 3 sets of 10, 10, 10 reps; last time (2 Oct 2026): 15.00 kg x 15, 15.00 kg x 12, 15.00 kg x 12\n7. Machine Assisted Pull-Up (Hammer Grip): 3 sets of 10, 5, 4 reps; last time (1 Oct 2026): 25.00 kg x 10, 20.00 kg x 6, 20.00 kg x 7\n8. Dumbbell Alternating Hammer Curl: 4 sets of 16, 16, 10, 3 reps; last time (1 Oct 2026): 7.50 kg x 24, 7.50 kg x 20, 7.50 kg x 20\n9. Dumbbell Alternating Bicep Curl: 3 sets of 10, 8, 8 reps; last time (1 Oct 2026): 7.50 kg x 22, 7.50 kg x 24, 7.50 kg x 26\n10. Preacher Curl Machine: 3 sets of 4, 3, 4 reps; last time (1 Oct 2026): 20.00 kg x 7, 20.00 kg x 5, 20.00 kg x 6\n11. Dumbbell Hammer Curl (Cross Body): 3 sets of 10, 10, 10 reps; last time (25 Sep 2026): 7.50 kg x 22, 7.50 kg x 20, 7.50 kg x 18\n12. Dumbbell Bicep Curl (Reverse Grip): 3 sets of 10, 10, 10 reps; not logged yet\n13. Barbell Decline Bench Press: 3 sets of 10, 10, 10 reps; last time (2 Oct 2026): 30.00 kg x 12, 30.00 kg x 10, 30.00 kg x 12\n14. Barbell Close Grip Bench Press: 3 sets of 10, 10, 10 reps; last time (24 Sep 2026): 30.00 kg x 5, 25.00 kg x 8, 30.00 kg x 5, 25.00 kg x 8, 30.00 kg x 4, 25.00 kg x 7\n15. Machine Assisted Dip: 3 sets of 6, 8, 8 reps; last time (5 Oct 2026): 25.00 kg x 7, 25.00 kg x 8, 25.00 kg x 10\n16. Cable Rope Triceps Pushdown: 3 sets of 20, 15, 10 reps; last time (24 Sep 2026): 15.00 kg x 30, 20.00 kg x 15, 20.00 kg x 20\n17. Push Up: 3 sets of 12, 13, 10 reps; last time (29 Aug 2026): 10.00 kg x 12, 10.00 kg x 13, 10.00 kg x 10\n18. Treadmill Running: 1 set, timed; last done 5 Oct 2026, no set details\n\nTraining a different day? Ask, for example, \"what's on Push A?\"",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "train tomorrow",
+      "message": "what should I train tomorrow?",
+      "reply": "Your next workout is probably Legs A: of your rotation days, it's the one you did longest ago (last on 23 Sep 2026). This is from your log up to 5 Oct 2026; tell me if you've trained since.\n\n1. Machine Hip Abduction: 3 sets of 30, 30, 30 reps; last time (3 Oct 2026): 35.00 kg x 30, 40.00 kg x 30, 45.00 kg x 30\n2. Barbell Hip Thrust: 3 sets of 15, 15, 15 reps; last time (3 Oct 2026): 60.00 kg x 15, 60.00 kg x 15, 60.00 kg x 15\n3. Hack Squat (Reverse Position): 3 sets of 10, 10, 11 reps; last time (3 Oct 2026): 70.00 kg x 10, 70.00 kg x 11, 70.00 kg x 12\n4. Leg Press: 3 sets of 11, 12, 15 reps; last time (23 Sep 2026): 70.00 kg x 11, 70.00 kg x 12, 70.00 kg x 15\n5. Standing Calf Raise: 3 sets of 10, 10, 10 reps; last time (3 Oct 2026): 70.00 kg x 15, 70.00 kg x 20, 70.00 kg x 20\n6. Seated Calf Raise: 3 sets of 20, 25, 30 reps; last time (26 Sep 2026): 25.00 kg x 20, 25.00 kg x 27, 25.00 kg x 30\n7. Machine Hip Adduction: 3 sets of 12, 8, 8 reps; last time (3 Oct 2026): 20.00 kg x 20, 25.00 kg x 20, 30.00 kg x 20\n8. Dumbbell Step-Up: 3 sets of 10, 10, 10 reps; not logged yet\n9. Dumbbell Romanian Deadlift: 3 sets of 15, 10, 15 reps; last time (23 Sep 2026): 12.50 kg x 15, 12.50 kg x 10, 12.50 kg x 15\n10. Leg Extension: 3 sets of 10, 10, 10 reps; last time (25 Feb 2025): 20.41 kg x 10, 27.22 kg x 9, 27.22 kg x 10\n11. Walking: 1 set, timed; last done 25 Sep 2026, no set details\n\nTraining a different day? Ask, for example, \"what's on Push A?\"",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "say yes",
+      "message": "last time I did dumbell incline bench pres?",
+      "reply": "I couldn't find 'dumbell incline bench pres' exactly. Did you mean Dumbbell Incline Bench Press?",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "say yes",
+      "message": "yes",
+      "reply": "Last time you did Dumbbell Incline Bench Press was 7 Sep 2026:\n- Set 1: 7.50 kg x 8\n- Set 2: 7.50 kg x 10",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "pick deadlift",
+      "message": "last deadlift session?",
+      "reply": "I found more than one match for 'deadlift'. Which one do you mean?\n1. Barbell Deadlift\n2. Barbell Romanian Deadlift\n3. Dumbbell Romanian Deadlift\n4. Smith Machine Deadlift",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "pick by number",
+      "message": "What did I lift last time on bench press?",
+      "reply": "I found more than one match for 'bench press'. Which one do you mean?\n1. Barbell Bench Press\n2. Dumbbell Incline Bench Press\n3. Dumbbell Bench Press\n4. Barbell Decline Bench Press\n5. Dumbbell Decline Bench Press\n6. Barbell Close Grip Bench Press\n7. Barbell Incline Bench Press",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "greeting",
+      "message": "hi",
+      "reply": "I can answer questions about your last session of an exercise, like 'last time I did bench press?'",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "out of scope",
+      "message": "what's the weather tomorrow?",
+      "reply": "I can answer questions about your last session of an exercise, like 'last time I did bench press?'",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "a day, not an exercise",
+      "message": "what did I do on push day?",
+      "reply": "Push A, last done on 5 Oct 2026:\n\n1. Bench Push-Up: 3 sets of 10, 10, 10 reps; last time (4 Nov 2024): 4.54 kg x 10, 4.54 kg x 10, 4.54 kg x 10\n2. Barbell Bench Press: 3 sets of 7, 8, 10 reps; last time (5 Oct 2026): 30.00 kg x 7, 30.00 kg x 8, 30.00 kg x 10\n3. Dumbbell Incline Bench Press: 3 sets of 10, 10, 10 reps; last time (7 Sep 2026): 7.50 kg x 8, 7.50 kg x 10\n4. Barbell Incline Bench Press: 3 sets of 6, 6, 4 reps; last time (5 Oct 2026): 25.00 kg x 6, 25.00 kg x 6, 25.00 kg x 4\n5. Barbell Decline Bench Press: 3 sets of 7, 12, 10 reps; last time (2 Oct 2026): 30.00 kg x 12, 30.00 kg x 10, 30.00 kg x 12\n6. Machine Fly: 3 sets of 12, 10, 8 reps; last time (5 Oct 2026): 20.00 kg x 12, 25.00 kg x 10, 25.00 kg x 8\n7. Dumbbell Shoulder Press: 3 sets of 12, 12, 7 reps; last time (5 Oct 2026): 7.50 kg x 12, 7.50 kg x 12, 10.00 kg x 7\n8. Cable One-Arm Lateral Raise: 3 sets of 15, 12, 15 reps; last time (5 Oct 2026): 5.00 kg x 15, 5.00 kg x 12, 5.00 kg x 15\n9. Dumbbell Lateral Raise: 3 sets of 10, 10, 10 reps; last time (5 Oct 2026): 5.00 kg x 10, 5.00 kg x 10, 5.00 kg x 10\n10. Machine Assisted Dip: 3 sets of 7, 8, 10 reps; last time (5 Oct 2026): 25.00 kg x 7, 25.00 kg x 8, 25.00 kg x 10\n11. Dumbbell Tricep Extension: 3 sets of 25, 20, 18 reps; last time (2 Oct 2026): 7.50 kg x 20, 7.50 kg x 20, 7.50 kg x 15\n12. Hanging Knee Raise: 3 sets of 8, 8, 5 reps; last time (5 Oct 2026): 10.00 kg x 8, 10.00 kg x 8, 10.00 kg x 5\n13. Plank: 2 sets, timed; last done 5 Oct 2026, no set details\n14. Treadmill Running: 1 set, timed; last done 5 Oct 2026, no set details\n\nTraining a different day? Ask, for example, \"what's on Pull A?\"",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "plank",
+      "message": "last plank?",
+      "reply": "You logged Plank on 5 Oct 2026, but there are no set details for it.",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "lat pulldown",
+      "message": "what did I do on lat pulldown last time?",
+      "reply": "I found more than one match for 'lat pulldown'. Which one do you mean?\n1. Wide Grip Lat Pulldown\n2. Iso Lateral Wide Pulldown\n3. Cable Grip Lat Pulldown (Narrow Grip)",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "same name twice",
+      "message": "last time I did ab rollout?",
+      "reply": "I found more than one match for 'ab rollout'. Which one do you mean?\n1. Barbell Ab Rollout\n2. Barbell Ab Rollout",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "unknown",
+      "message": "last time I did zzz?",
+      "reply": "'zzz' is not in your data.",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "name with brackets",
+      "message": "last time I did hack squat reverse position?",
+      "reply": "Last time you did Hack Squat (Reverse Position) was 3 Oct 2026:\n- Set 1: 70.00 kg x 10\n- Set 2: 70.00 kg x 11\n- Set 3: 70.00 kg x 12",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "named day",
+      "message": "what's on push b?",
+      "reply": "UnexpectedModelBehavior: Tool 'workout_days_tool' exceeded max retries count of 1. Consider raising the retry limit, or see the docs on tool retries: https://pydantic.dev/docs/ai/tools-toolsets/tools-advanced/#tool-retries",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "a day, not an exercise",
+      "message": "what did I do on push day?",
+      "reply": "\n\nI found a few exercises with \"push\" in the name:\n\n1. Push Up\n2. Modified Push-Up to Forearms\n3. Bench Push-Up\n\nDid you mean one of these? Please let me know which one you'd like to check.",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "a day, not an exercise",
+      "message": "what did I do on push day?",
+      "reply": "I can answer questions about your last session of an exercise, like 'last time I did bench press?'",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "wrong exercise",
+      "message": "last time I did barbell curls?",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x 7\n- Set 2: 30.00 kg x 8\n- Set 3: 30.00 kg x 10",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "repeated options",
+      "message": "last deadlift session?",
+      "reply": "I found more than one match for 'deadlift'. Which one do you mean?\n1. Barbell Deadlift\n1. Barbell Deadlift\n2. Barbell Romanian Deadlift\n2. Barbell Romanian Deadlift\n3. Dumbbell Romanian Deadlift\n4. Smith Machine Deadlift",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": true,
+      "clear_and_brief": false
+    },
+    {
+      "case": "rambling",
+      "message": "last plank?",
+      "reply": "Great question! Planks are one of the best core exercises there is, and holding them builds strength in your abs, back and shoulders. You logged Plank on 5 Oct 2026, but there are no set details for it. Keep up the good work and remember to stay hydrated and get enough sleep!",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": false
+      },
+      "answers_question": true,
+      "clear_and_brief": false
+    },
+    {
+      "case": "greeting gets a session",
+      "message": "hi",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x 7",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "unknown exercise, invented answer",
+      "message": "last time I did zzz?",
+      "reply": "Last time you did Plank was 5 Oct 2026, but there are no set details for it.",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "cut off",
+      "message": "What did I lift last time on barbell bench press?",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "workout today",
+      "message": "what's my workout today?",
+      "reply": "Your next workout is probably Legs A: of your rotation days, it's the one you did longest ago (last on 23 Sep 2026). This is from your log up to 5 Oct 2026; tell me if you've trained since.\n\n1. Machine Hip Abduction: 3 sets of 30, 30, 30 reps; last time (3 Oct 2026): 35.00 kg x 30, 40.00 kg x 30, 45.00 kg x 30\n2. Barbell Hip Thrust: 3 sets of 15, 15, 15 reps; last time (3 Oct 2026): 60.00 kg x 15, 60.00 kg x 15, 60.00 kg x 15\n3. Hack Squat (Reverse Position): 3 sets of 10, 10, 11 reps; last time (3 Oct 2026): 70.00 kg x 10, 70.00 kg x 11, 70.00 kg x 12\n4. Leg Press: 3 sets of 11, 12, 15 reps; last time (23 Sep 2026): 70.00 kg x 11, 70.00 kg x 12, 70.00 kg x 15\n5. Standing Calf Raise: 3 sets of 10, 10, 10 reps; last time (3 Oct 2026): 70.00 kg x 15, 70.00 kg x 20, 70.00 kg x 20\n6. Seated Calf Raise: 3 sets of 20, 25, 30 reps; last time (26 Sep 2026): 25.00 kg x 20, 25.00 kg x 27, 25.00 kg x 30\n7. Machine Hip Adduction: 3 sets of 12, 8, 8 reps; last time (3 Oct 2026): 20.00 kg x 20, 25.00 kg x 20, 30.00 kg x 20\n8. Dumbbell Step-Up: 3 sets of 10, 10, 10 reps; not logged yet\n9. Dumbbell Romanian Deadlift: 3 sets of 15, 10, 15 reps; last time (23 Sep 2026): 12.50 kg x 15, 12.50 kg x 10, 12.50 kg x 15\n10. Leg Extension: 3 sets of 10, 10, 10 reps; last time (25 Feb 2025): 20.41 kg x 10, 27.22 kg x 9, 27.22 kg x 10\n11. Walking: 1 set, timed; last done 25 Sep 2026, no set details\n\nTraining a different day? Ask, for example, \"what's on Push A?\"",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "pick deadlift",
+      "message": "2",
+      "reply": "Last time you did Barbell Romanian Deadlift was 3 Oct 2026:\n- Set 1: 35.00 kg x 10\n- Set 2: 35.00 kg x 10\n- Set 3: 35.00 kg x 10",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "pick by number",
+      "message": "1",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x 7\n- Set 2: 30.00 kg x 8\n- Set 3: 30.00 kg x 10",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "barbell curl",
+      "message": "When did I last do barbell curls?",
+      "reply": "Last time you did Barbell Curl was 3 Feb 2023:\n- Set 1: 13.61 kg x 15\n- Set 2: 13.61 kg x 15\n- Set 3: 13.61 kg x 15\n- Set 4: 13.61 kg x 15",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "no set details",
+      "message": "when did I last go walking?",
+      "reply": "You logged Walking on 25 Sep 2026, but there are no set details for it.",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "misspelt, one option",
+      "message": "last time I did dumbell incline bench pres?",
+      "reply": "I couldn't find 'dumbell incline bench pres' exactly. Did you mean Dumbbell Incline Bench Press?",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "incline dumbbell",
+      "message": "last dumbbell incline bench press session?",
+      "reply": "Last time you did Dumbbell Incline Bench Press was 7 Sep 2026:\n- Set 1: 7.50 kg x 8\n- Set 2: 7.50 kg x 10",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "several matches",
+      "message": "What did I lift last time on bench press?",
+      "reply": "I found more than one match for 'bench press'. Which one do you mean?\n1. Barbell Bench Press\n2. Dumbbell Incline Bench Press\n3. Dumbbell Bench Press\n4. Barbell Decline Bench Press\n5. Dumbbell Decline Bench Press\n6. Barbell Close Grip Bench Press\n7. Barbell Incline Bench Press",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "exact name",
+      "message": "What did I lift last time on barbell bench press?",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x 7\n- Set 2: 30.00 kg x 8\n- Set 3: 30.00 kg x 10",
+      "judge": {
+        "answers_question": true,
+        "clear_and_brief": true
+      },
+      "answers_question": true,
+      "clear_and_brief": true
+    },
+    {
+      "case": "after a refusal",
+      "message": "When did I last do barbell curls?",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "arms day",
+      "message": "show me my arms day",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "say yes",
+      "message": "yes",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "unknown",
+      "message": "last time I did zzz?",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "exact name",
+      "message": "What did I lift last time on barbell bench press?",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    },
+    {
+      "case": "pick by number",
+      "message": "1",
+      "reply": "'1' is not in your data.",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": true
+      },
+      "answers_question": false,
+      "clear_and_brief": true
+    },
+    {
+      "case": "say yes",
+      "message": "yes",
+      "reply": "UnexpectedModelBehavior: Tool 'get_last_session_tool' exceeded max retries count of 1. Consider raising the retry limit, or see the docs on tool retries: https://pydantic.dev/docs/ai/tools-toolsets/tools-advanced/#tool-retries",
+      "judge": {
+        "answers_question": false,
+        "clear_and_brief": false
+      },
+      "answers_question": false,
+      "clear_and_brief": false
+    }
+  ]
+}
