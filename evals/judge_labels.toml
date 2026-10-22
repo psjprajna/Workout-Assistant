@@ -1,0 +1,209 @@
+# Hand labels for the reply judge: the answer key a judge is compared with.
+#
+# Each entry is one reply and two yes/no verdicts, given by a person:
+#   answers_question: the reply gives what was asked, or correctly asks what is needed.
+#   clear_and_brief:  easy to read at a glance, no clutter, nothing repeated.
+#
+# source = "<file in evals/results>": the reply is looked up there by case and message.
+# No reply in the entry: it is not copied, so it cannot drift from the results file.
+# source = "made-up": message and reply are written here, on purpose wrong, because the
+# real replies are almost all good and a key with no "no" cannot tell a judge that
+# checks from one that always says yes.
+#
+# Labels for the first 15 were given by the owner on 2026-10-22 from agent-2026-10-20-demo.json.
+# Entries marked "claude" were labelled by Claude; the owner reviewed them on 2026-10-22.
+
+# --- real replies, current agent: labelled by the owner -----------------------------
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "after a refusal"
+message = "When did I last do barbell curls?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "arms day"
+message = "show me my arms day"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "train tomorrow"
+message = "what should I train tomorrow?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "say yes"
+message = "last time I did dumbell incline bench pres?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "say yes"
+message = "yes"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "pick deadlift"
+message = "last deadlift session?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "pick by number"
+message = "What did I lift last time on bench press?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "greeting"
+message = "hi"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "out of scope"
+message = "what's the weather tomorrow?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "a day, not an exercise"
+message = "what did I do on push day?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "plank"
+message = "last plank?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "lat pulldown"
+message = "what did I do on lat pulldown last time?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "same name twice"
+message = "last time I did ab rollout?"
+answers_question = false
+clear_and_brief = true
+note = "Two options are both 'Barbell Ab Rollout', so the user cannot tell them apart."
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "unknown"
+message = "last time I did zzz?"
+answers_question = true
+clear_and_brief = true
+
+[[case]]
+source = "agent-2026-10-20-demo.json"
+case = "name with brackets"
+message = "last time I did hack squat reverse position?"
+answers_question = true
+clear_and_brief = true
+
+# --- real bad replies from older runs (labelled by claude) --------------------------
+
+[[case]]
+source = "agent-2026-10-19-reasoning-off-sequential.json"
+case = "named day"
+message = "what's on push b?"
+answers_question = false
+clear_and_brief = false
+note = "claude: the user was shown an internal error, not their plan."
+
+[[case]]
+source = "agent-2026-10-13-stage2-free-text.json"
+case = "a day, not an exercise"
+message = "what did I do on push day?"
+answers_question = false
+clear_and_brief = true
+note = "claude: before plan days existed. Offers push-up exercises; the user asked about a workout day."
+
+[[case]]
+source = "agent-2026-10-13-stage3-typed.json"
+case = "a day, not an exercise"
+message = "what did I do on push day?"
+answers_question = false
+clear_and_brief = true
+note = "claude: before plan days existed. Replies with the help sentence to a reasonable question."
+
+# --- made-up bad replies (labelled by claude) ---------------------------------------
+
+[[case]]
+source = "made-up"
+case = "wrong exercise"
+message = "last time I did barbell curls?"
+reply = '''Last time you did Barbell Bench Press was 5 Oct 2026:
+- Set 1: 30.00 kg x 7
+- Set 2: 30.00 kg x 8
+- Set 3: 30.00 kg x 10'''
+answers_question = false
+clear_and_brief = true
+
+[[case]]
+source = "made-up"
+case = "repeated options"
+message = "last deadlift session?"
+reply = '''I found more than one match for 'deadlift'. Which one do you mean?
+1. Barbell Deadlift
+1. Barbell Deadlift
+2. Barbell Romanian Deadlift
+2. Barbell Romanian Deadlift
+3. Dumbbell Romanian Deadlift
+4. Smith Machine Deadlift'''
+answers_question = true
+clear_and_brief = false
+
+[[case]]
+source = "made-up"
+case = "rambling"
+message = "last plank?"
+reply = '''Great question! Planks are one of the best core exercises there is, and holding them builds strength in your abs, back and shoulders. You logged Plank on 5 Oct 2026, but there are no set details for it. Keep up the good work and remember to stay hydrated and get enough sleep!'''
+answers_question = true
+clear_and_brief = false
+
+[[case]]
+source = "made-up"
+case = "greeting gets a session"
+message = "hi"
+reply = '''Last time you did Barbell Bench Press was 5 Oct 2026:
+- Set 1: 30.00 kg x 7'''
+answers_question = false
+clear_and_brief = true
+
+[[case]]
+source = "made-up"
+case = "unknown exercise, invented answer"
+message = "last time I did zzz?"
+reply = '''Last time you did Plank was 5 Oct 2026, but there are no set details for it.'''
+answers_question = false
+clear_and_brief = true
+
+[[case]]
+source = "made-up"
+case = "cut off"
+message = "What did I lift last time on barbell bench press?"
+reply = '''Last time you did Barbell Bench Press was 5 Oct 2026:
+- Set 1: 30.00 kg x'''
+answers_question = false
+clear_and_brief = false
