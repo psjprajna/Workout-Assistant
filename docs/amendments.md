@@ -116,6 +116,19 @@ Replace with:
 > - A synthetic CSV supplies conflict and missing-data cases that the real export cannot.
 > - Evals on Langfuse: a dataset of 30 to 50 cases built from the §10 journeys, the failure list above and the synthetic CSV, each with the expected outcome kind, expected tool trajectory, expected evidence rows and, for refusals and asks, the expected text class. Code evaluators score outcome kind, tool trajectory, evidence rows, numbers-in-reply ⊂ evidence, refusal on the safety set, ask on the ambiguity set, zero lookups on "Why?". Run-level evaluators enforce the §9 budgets. A judge is used only for phrasing quality, and never in the request path. Experiments run on every model or prompt change and in CI.
 > - First experiments, in order: decision model routing (Jev versus a small generative model) on the sample-message set; generative model choice (Qwen3.5-35B-A3B, DeepSeek V4.1 Flash, gpt-oss-120b) on the full dataset.
+> - Reply judge trust check (2026-10-22, `scripts/judge_results.py`, offline only, never in the request path). Two yes/no questions, `answers_question` (aq) and `clear_and_brief` (cb), judged by Sonnet 5.5 (`openrouter`, temperature 0) and by `typesafe:jev-latest`, compared with hand labels in `evals/judge_labels.toml`. Agreement, with an always-yes judge beside it:
+>
+>   | Labels | n | Sonnet aq | Sonnet cb | Jev aq | Jev cb | always-yes aq / cb |
+>   |---|---|---|---|---|---|---|
+>   | 24 labels the rubric was tuned on (rubric 3) | 24 | 23 | 23 | 19 | 23 | 16 / 20 |
+>   | 9 fresh replies, not seen when the rubric was written | 9 | 9 | 9 | 8 | 9 | 9 / 9 |
+>
+>   Earlier rubrics, out of 48 on the 24: first rubric Sonnet 41, Jev 36; list-aware Sonnet 45, Jev 40; rubric 3 Sonnet 46, Jev 42 (always-yes 36). Files: `evals/results/judge-2026-10-22-*.json`.
+>
+>   Read these with care. (1) The 24 were used to write the rubric, so those numbers are optimistic. (2) The 9 fresh replies are all good and were labelled by Claude, not the owner (`note = "claude"`), so they show only that a judge does not wrongly say no, and agreement with them is weaker evidence than agreement with owner labels. They cannot show that a judge catches bad replies: always-yes also scores 9/9. The "no" side rests on the 24 labels (8 aq, 4 cb), 6 of which are made-up replies. (3) Jev's five `answers_question` misses on the 24 (rubric 3) are a good reply it rejects ("zzz": not in your data; the made-up repeated-options list) or a bad one it accepts (the two old "push day" replies, the invented plank answer); on the fresh 9 it also rejects the correct deadlift pick "2". On aq it is 3 above always-yes on the 24. Sonnet's one miss on each question is the "ab rollout" reply with two identical options: Sonnet says not clear and brief (the same thing twice), the label says clear. The owner's call stands; the made-up "repeated options" label (cb no) contradicts it and is open.
+>
+>   Use Sonnet 5.5. It beats always-yes by 7 on aq and 3 on cb on the tuned labels and made no error on the fresh sample; Jev's aq adds little over always-yes. Not yet known: how Sonnet does on real bad replies it has not seen. Before Session 4 puts it in the Langfuse experiment, owner-label a sample of the failed runs (`agent-2026-10-22-judge-fresh*.json`, about 20 real bad replies) and report that number here.
+>
 > - A concurrency script runs many chats at once and checks that they never mix state and that nothing blocks.
 
 ## §26 Folder Structure

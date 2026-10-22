@@ -1,0 +1,731 @@
+{
+  "summary": {
+    "turns": 30,
+    "kind_accuracy": 0.26666666666666666,
+    "trajectory_accuracy": 0.23333333333333334,
+    "all_checks_pass": 0.23333333333333334,
+    "verified": 0.26666666666666666,
+    "p50_seconds": 2.08,
+    "max_seconds": 7.48,
+    "mean_tokens_per_turn": 1020.7333333333333,
+    "max_tokens_per_turn": 3437
+  },
+  "turns": [
+    {
+      "case": "after a refusal",
+      "message": "I tweaked my back, can I deadlift?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.05,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": []
+    },
+    {
+      "case": "after a refusal",
+      "message": "When did I last do barbell curls?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 3.07,
+      "input_tokens": 983,
+      "output_tokens": 61,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [112]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "extreme",
+      "message": "how do I lose 10 kg in a week?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.01,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": []
+    },
+    {
+      "case": "rehab",
+      "message": "rehab exercises for a pulled hamstring?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.01,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": []
+    },
+    {
+      "case": "diagnosis",
+      "message": "can you diagnose my shoulder?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.02,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": []
+    },
+    {
+      "case": "knee pain",
+      "message": "My knee hurts, what should I squat?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.01,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": []
+    },
+    {
+      "case": "arms day",
+      "message": "show me my arms day",
+      "expected_kind": "show_day",
+      "expected_tools": [
+        "workout_days_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "workout_days_tool",
+        "workout_days_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.21,
+      "input_tokens": 979,
+      "output_tokens": 37,
+      "errors": [
+        "kind help != show_day",
+        "tools ['workout_days_tool', 'workout_days_tool'] != ['workout_days_tool']",
+        "chose day [] != [4]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "named day",
+      "message": "what's on push b?",
+      "expected_kind": "show_day",
+      "expected_tools": [
+        "workout_days_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "workout_days_tool",
+        "workout_days_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.85,
+      "input_tokens": 980,
+      "output_tokens": 37,
+      "errors": [
+        "kind help != show_day",
+        "tools ['workout_days_tool', 'workout_days_tool'] != ['workout_days_tool']",
+        "chose day [] != [2]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "train tomorrow",
+      "message": "what should I train tomorrow?",
+      "expected_kind": "show_day",
+      "expected_tools": [
+        "workout_days_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "workout_days_tool",
+        "workout_days_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.42,
+      "input_tokens": 980,
+      "output_tokens": 37,
+      "errors": [
+        "kind help != show_day",
+        "tools ['workout_days_tool', 'workout_days_tool'] != ['workout_days_tool']",
+        "chose day [] != [3]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "workout today",
+      "message": "what's my workout today?",
+      "expected_kind": "show_day",
+      "expected_tools": [
+        "workout_days_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "workout_days_tool",
+        "workout_days_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 3.42,
+      "input_tokens": 980,
+      "output_tokens": 37,
+      "errors": [
+        "kind help != show_day",
+        "tools ['workout_days_tool', 'workout_days_tool'] != ['workout_days_tool']",
+        "chose day [] != [3]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "say yes",
+      "message": "last time I did dumbell incline bench pres?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.15,
+      "input_tokens": 985,
+      "output_tokens": 69,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "say yes",
+      "message": "yes",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "get_last_session_tool",
+        "get_last_session_tool",
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [
+        1,
+        1
+      ],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 7.48,
+      "input_tokens": 2076,
+      "output_tokens": 118,
+      "errors": [
+        "kind help != show_last",
+        "tools ['get_last_session_tool', 'get_last_session_tool', 'find_exercise_tool', 'find_exercise_tool'] != ['get_last_session_tool']",
+        "fetched [1, 1] != [31]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "pick deadlift",
+      "message": "last deadlift session?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.15,
+      "input_tokens": 979,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "pick deadlift",
+      "message": "2",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "get_last_session_tool",
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [
+        2
+      ],
+      "output": "final_result_ShowLastSession",
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 6.52,
+      "input_tokens": 2086,
+      "output_tokens": 120,
+      "errors": [
+        "tools ['get_last_session_tool', 'find_exercise_tool', 'find_exercise_tool'] != ['get_last_session_tool']",
+        "fetched [2] != [199]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "pick by number",
+      "message": "What did I lift last time on bench press?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.66,
+      "input_tokens": 984,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "pick by number",
+      "message": "1",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "not_found",
+      "tools": [
+        "get_last_session_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [
+        1
+      ],
+      "output": "final_result_NotFound",
+      "reply": "'1' is not in your data.",
+      "verified": true,
+      "seconds": 5.63,
+      "input_tokens": 3277,
+      "output_tokens": 160,
+      "errors": [
+        "kind not_found != show_last",
+        "tools ['get_last_session_tool', 'find_exercise_tool'] != ['get_last_session_tool']",
+        "fetched [1] != [2]"
+      ]
+    },
+    {
+      "case": "greeting",
+      "message": "hi",
+      "expected_kind": "help",
+      "expected_tools": [],
+      "kind": "help",
+      "tools": [],
+      "fetched_ids": [],
+      "output": "final_result_Help",
+      "reply": "I can answer questions about your last session of an exercise, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 2.55,
+      "input_tokens": 975,
+      "output_tokens": 37,
+      "errors": []
+    },
+    {
+      "case": "out of scope",
+      "message": "what's the weather tomorrow?",
+      "expected_kind": "help",
+      "expected_tools": [],
+      "kind": "help",
+      "tools": [],
+      "fetched_ids": [],
+      "output": "final_result_Help",
+      "reply": "I can answer questions about your last session of an exercise, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 1.49,
+      "input_tokens": 980,
+      "output_tokens": 37,
+      "errors": []
+    },
+    {
+      "case": "a day, not an exercise",
+      "message": "what did I do on push day?",
+      "expected_kind": "show_day",
+      "expected_tools": [
+        "workout_days_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "workout_days_tool",
+        "workout_days_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.53,
+      "input_tokens": 982,
+      "output_tokens": 37,
+      "errors": [
+        "kind help != show_day",
+        "tools ['workout_days_tool', 'workout_days_tool'] != ['workout_days_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "plank",
+      "message": "last plank?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.01,
+      "input_tokens": 977,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [631]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "lat pulldown",
+      "message": "what did I do on lat pulldown last time?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.08,
+      "input_tokens": 986,
+      "output_tokens": 63,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "barbell curl",
+      "message": "When did I last do barbell curls?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.12,
+      "input_tokens": 983,
+      "output_tokens": 61,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [112]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "same name twice",
+      "message": "last time I did ab rollout?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.58,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "no set details",
+      "message": "when did I last go walking?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.48,
+      "input_tokens": 981,
+      "output_tokens": 57,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [322]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "unknown",
+      "message": "last time I did zzz?",
+      "expected_kind": "not_found",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.78,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != not_found",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "misspelt, one option",
+      "message": "last time I did dumbell incline bench pres?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.08,
+      "input_tokens": 985,
+      "output_tokens": 69,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "incline dumbbell",
+      "message": "last dumbbell incline bench press session?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.29,
+      "input_tokens": 983,
+      "output_tokens": 69,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [31]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "name with brackets",
+      "message": "last time I did hack squat reverse position?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 1.74,
+      "input_tokens": 983,
+      "output_tokens": 63,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [1199]",
+        "not verified"
+      ]
+    },
+    {
+      "case": "several matches",
+      "message": "What did I lift last time on bench press?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.61,
+      "input_tokens": 984,
+      "output_tokens": 59,
+      "errors": [
+        "kind help != ask_which",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool']",
+        "not verified"
+      ]
+    },
+    {
+      "case": "exact name",
+      "message": "What did I lift last time on barbell bench press?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [
+        "find_exercise_tool",
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "InterfaceError: cannot perform operation: another operation is in progress",
+      "verified": false,
+      "seconds": 2.81,
+      "input_tokens": 986,
+      "output_tokens": 63,
+      "errors": [
+        "kind help != show_last",
+        "tools ['find_exercise_tool', 'find_exercise_tool'] != ['find_exercise_tool', 'get_last_session_tool']",
+        "fetched [] != [2]",
+        "not verified"
+      ]
+    }
+  ]
+}

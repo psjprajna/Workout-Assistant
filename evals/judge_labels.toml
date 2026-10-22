@@ -207,3 +207,81 @@ reply = '''Last time you did Barbell Bench Press was 5 Oct 2026:
 - Set 1: 30.00 kg x'''
 answers_question = false
 clear_and_brief = false
+
+# --- fresh replies from agent-2026-10-22-judge-fresh-3.json (labelled by claude) -------
+# Not seen by the rubric when it was written. Labelled by Claude on 2026-10-22 at the
+# owner's request, not by the owner: a judge agreeing with these is weaker evidence than
+# agreeing with owner labels. All nine replies are good, so they test only whether a judge
+# wrongly says no.
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "workout today"
+message = "what's my workout today?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "pick deadlift"
+message = "2"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "pick by number"
+message = "1"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "barbell curl"
+message = "When did I last do barbell curls?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "no set details"
+message = "when did I last go walking?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "misspelt, one option"
+message = "last time I did dumbell incline bench pres?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "incline dumbbell"
+message = "last dumbbell incline bench press session?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "several matches"
+message = "What did I lift last time on bench press?"
+answers_question = true
+clear_and_brief = true
+note = "claude"
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh-3.json"
+case = "exact name"
+message = "What did I lift last time on barbell bench press?"
+answers_question = true
+clear_and_brief = true
+note = "claude"

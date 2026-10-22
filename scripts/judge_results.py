@@ -43,10 +43,13 @@ INSTRUCTIONS = """\
 You grade one reply from a workout-log assistant. You see the user's message and the reply.
 Answer two yes/no questions about the reply. Do not judge whether its numbers are true.
 
+For answers_question: when the message is something the assistant cannot help with (a
+greeting, an off-topic question), a reply that says what it can do answers it.
+
 For clear_and_brief: a workout log is naturally a list. A numbered list of exercises, or
-sets written out one by one, is the content the user asked for, not clutter. Say no only
-for padding, rambling, a cut-off reply, or the same thing said twice (for example two
-identical options in a question).
+sets written out one by one, is the content the user asked for, not clutter. Say no for
+padding, rambling, a cut-off reply, the same thing said twice, or internal error text
+(an exception name or message) shown to the user.
 """
 
 
