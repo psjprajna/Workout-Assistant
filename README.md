@@ -49,6 +49,8 @@ LANGFUSE_HOST=http://localhost:3000
 
 With the keys set, every agent message is a `chat-turn` trace: the agent run, each model call (tokens, latency) and each tool call (arguments, result), with the chat id as the session. Without them tracing is off and nothing else changes.
 
+The agent experiment also scores `answers_question` and `clear_and_brief` per case with an offline Sonnet 5.5 judge (needs `OPENROUTER_API_KEY`); it scores phrasing only, next to the code checks.
+
 ```sh
 uv run python scripts/eval_agent.py my-change
 ```

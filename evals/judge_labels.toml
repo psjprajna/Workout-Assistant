@@ -286,11 +286,11 @@ answers_question = true
 clear_and_brief = true
 note = "claude"
 
-# --- real bad replies from the 2026-10-22 broken runs (labelled by claude) -----------
+# --- real bad replies from the 2026-10-22 broken runs (labelled by the owner) -----------
 # The provider sent two tool calls at once and the agent failed (see docs/amendments.md
 # section 25). Nearly every failed reply is the same InterfaceError string, so only a
 # spread of messages is labelled, plus the two other kinds of bad reply. Labelled by
-# Claude at the owner's request, not by the owner.
+# the owner.
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -298,7 +298,7 @@ case = "after a refusal"
 message = "When did I last do barbell curls?"
 answers_question = false
 clear_and_brief = false
-note = "claude: InterfaceError string shown to the user, not an answer."
+note = "owner: InterfaceError string shown to the user, not an answer."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -306,7 +306,7 @@ case = "arms day"
 message = "show me my arms day"
 answers_question = false
 clear_and_brief = false
-note = "claude: InterfaceError string shown to the user, not an answer."
+note = "owner: InterfaceError string shown to the user, not an answer."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -314,7 +314,7 @@ case = "say yes"
 message = "yes"
 answers_question = false
 clear_and_brief = false
-note = "claude: InterfaceError string shown to the user, not an answer."
+note = "owner: InterfaceError string shown to the user, not an answer."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -322,7 +322,7 @@ case = "unknown"
 message = "last time I did zzz?"
 answers_question = false
 clear_and_brief = false
-note = "claude: InterfaceError string shown to the user, not an answer."
+note = "owner: InterfaceError string shown to the user, not an answer."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -330,7 +330,7 @@ case = "exact name"
 message = "What did I lift last time on barbell bench press?"
 answers_question = false
 clear_and_brief = false
-note = "claude: InterfaceError string shown to the user, not an answer."
+note = "owner: InterfaceError string shown to the user, not an answer."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh.json"
@@ -338,7 +338,7 @@ case = "pick by number"
 message = "1"
 answers_question = false
 clear_and_brief = true
-note = "claude: The user picked option 1 of the bench press list; the reply says '1' is not in the data. Short and readable, but wrong. The judge sees no earlier turn, so it may read this as a fair reply."
+note = "owner: The user picked option 1 of the bench press list; the reply says '1' is not in the data. Short and readable, but wrong. The judge sees no earlier turn, so it may read this as a fair reply."
 
 [[case]]
 source = "agent-2026-10-22-judge-fresh-2.json"
@@ -346,4 +346,108 @@ case = "say yes"
 message = "yes"
 answers_question = false
 clear_and_brief = false
-note = "claude: UnexpectedModelBehavior text shown to the user, not an answer."
+note = "owner: UnexpectedModelBehavior text shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "named day"
+message = "what's on push b?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "train tomorrow"
+message = "what should I train tomorrow?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "workout today"
+message = "what's my workout today?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "say yes"
+message = "last time I did dumbell incline bench pres?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "pick deadlift"
+message = "last deadlift session?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "pick deadlift"
+message = "2"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "pick by number"
+message = "What did I lift last time on bench press?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "a day, not an exercise"
+message = "what did I do on push day?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "plank"
+message = "last plank?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "lat pulldown"
+message = "what did I do on lat pulldown last time?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "same name twice"
+message = "last time I did ab rollout?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "no set details"
+message = "when did I last go walking?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."
+
+[[case]]
+source = "agent-2026-10-22-judge-fresh.json"
+case = "misspelt, one option"
+message = "last time I did dumbell incline bench pres?"
+answers_question = false
+clear_and_brief = false
+note = "owner: InterfaceError string shown to the user, not an answer."

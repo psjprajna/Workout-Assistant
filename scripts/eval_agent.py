@@ -10,6 +10,10 @@ With Langfuse keys in .env the cases are uploaded as the dataset "agent-turns" a
 run is a Langfuse experiment named LABEL: a trace per case, item scores, and run scores
 for the §9 budgets. Without keys it runs the same cases locally. Either way the summary
 is written to evals/results/agent-<date>-<LABEL>.json.
+
+The item scores also include the offline reply judge (answers_question, clear_and_brief,
+Sonnet 5.5 through OpenRouter; src/workout_agent/evals/judge.py). It only scores phrasing
+and is skipped when OPENROUTER_API_KEY is not set.
 """
 
 import asyncio
@@ -21,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import asyncpg
+from langfuse.experiment import EvaluatorFunction
 
 from workout_agent.agents.workout_agent import build_agent
 from workout_agent.evals.agent import (
@@ -28,11 +33,13 @@ from workout_agent.evals.agent import (
     DATASET,
     budgets,
     check_case,
+    judge_case,
     run_case,
     summarize,
     turns_of,
     upload_cases,
 )
+from workout_agent.evals.judge import build_judge
 from workout_agent.observability import flush_tracing, langfuse_client, setup_tracing
 from workout_agent.settings import Settings
 
@@ -56,6 +63,12 @@ def main() -> None:
         finally:
             await conn.close()
 
+    evaluators: list[EvaluatorFunction] = [check_case]
+    try:
+        evaluators.append(judge_case(build_judge("openrouter", settings)))
+    except RuntimeError as e:  # no key: the code checks still run
+        print(f"No judge scores ({e}).")
+
     client = langfuse_client()
     if client is not None:
         upload_cases(client)
@@ -63,7 +76,7 @@ def main() -> None:
             name=DATASET,
             run_name=f"{date.today()}-{label}",
             task=task,
-            evaluators=[check_case],
+            evaluators=evaluators,
             run_evaluators=[budgets],
             max_concurrency=1,  # one case at a time, so latencies are not skewed
         )

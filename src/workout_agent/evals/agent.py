@@ -4,8 +4,10 @@ CASES is the dataset: each case is one chat of one or more turns, with the expec
 outcome kind, tool trajectory and, where it matters, the exercise or plan day fetched.
 upload_cases puts it in Langfuse as the dataset "agent-turns" (same ids every time, so
 it is updated, not duplicated). run_case plays one case through stream_agent_message;
-check_case scores each case; budgets scores the whole run against docs/amendments.md §9.
-All of it is code: no judge model. scripts/eval_agent.py runs it.
+check_case scores each case; judge_case adds phrasing scores; budgets scores the whole run
+against docs/amendments.md §9. Everything is code except the judge, which is offline and
+only scores phrasing (answers_question, clear_and_brief): the safety screen, the evidence
+check and faithfulness stay code-checked. scripts/eval_agent.py runs it.
 """
 
 import statistics
@@ -17,9 +19,10 @@ from typing import Any
 import asyncpg
 from langfuse import Evaluation, Langfuse
 from langfuse.experiment import ExperimentItemResult
-from pydantic_ai import capture_run_messages
+from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 
+from workout_agent.evals.judge import QUESTIONS, Verdict, judge_one
 from workout_agent.workflow.agent_chat import stream_agent_message
 from workout_agent.workflow.events import Error, Final
 from workout_agent.workflow.safety import SAFETY_REPLY
@@ -262,6 +265,33 @@ def check_case(*, output: list[dict[str, Any]], **_: Any) -> list[Evaluation]:
             name="tokens", value=sum(r["input_tokens"] + r["output_tokens"] for r in output)
         ),
     ]
+
+
+def judge_case(judge: Agent[None, Verdict]) -> Any:
+    """An item evaluator: the share of this case's judged turns the judge says yes to.
+
+    Refusal turns are skipped (a fixed reply, nothing to phrase). A failed judge call is
+    recorded as judge_errors and left out of the shares; it never fails the run.
+    """
+
+    async def evaluate(*, output: list[dict[str, Any]], **_: Any) -> list[Evaluation]:
+        verdicts = [
+            await judge_one(judge, r["message"], r["reply"])
+            for r in output
+            if r["kind"] != "refuse"
+        ]
+        judged = [v for v in verdicts if "error" not in v]
+        failed = [v["error"] for v in verdicts if "error" in v]
+        scores = [
+            Evaluation(name=q, value=sum(v[q] for v in judged) / len(judged))
+            for q in QUESTIONS
+            if judged
+        ]
+        if failed:
+            scores.append(Evaluation(name="judge_errors", value=len(failed), comment=failed[0]))
+        return scores
+
+    return evaluate
 
 
 def summarize(turns: list[dict[str, Any]]) -> dict[str, float]:
