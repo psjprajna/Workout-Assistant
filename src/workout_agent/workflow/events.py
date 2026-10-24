@@ -14,12 +14,16 @@ class ToolStart(BaseModel):
     kind: Literal["tool_start"] = "tool_start"
     tool: str
     label: str
+    args: dict[str, Any] = {}
+    call_id: str = ""  # pairs this start with its end when a tool is called twice
 
 
 class ToolEnd(BaseModel):
     kind: Literal["tool_end"] = "tool_end"
     tool: str
     status: str  # the tool result's status: ok / ambiguous / no_rows, or "error"
+    result: dict[str, Any] = {}  # the dict that passed the tool contract, for the page
+    call_id: str = ""
 
 
 class Final(BaseModel):

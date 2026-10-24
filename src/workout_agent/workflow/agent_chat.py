@@ -28,6 +28,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import UsageLimits
 
+from workout_agent.agents.guardrails import page_result
 from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
 from workout_agent.agents.workout_agent import AgentDeps, jsonable
 from workout_agent.observability import TurnTrace
@@ -52,11 +53,12 @@ BUSY_REPLY = "This chat is busy answering another message. Please send yours aga
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
 
 
-def _tool_status(event: FunctionToolResultEvent) -> str:
+def _tool_result(event: FunctionToolResultEvent) -> dict[str, Any]:
+    """The tool's result dict (already through the tool contract), or a retry marker."""
     part = event.part
     if isinstance(part, ToolReturnPart) and isinstance(part.content, dict):
-        return str(part.content.get("status", "ok"))
-    return "retry"  # the model sent bad arguments and is asked to try again
+        return part.content
+    return {"status": "retry"}  # the model sent bad arguments and is asked to try again
 
 
 async def _run_agent(
@@ -83,11 +85,26 @@ async def _run_agent(
                     async for event in events:
                         if isinstance(event, FunctionToolCallEvent):
                             tool = event.part.tool_name
-                            label = tool_label(tool, event.part.args_as_dict())
-                            queue.put_nowait(ToolStart(tool=tool, label=label))
+                            args = event.part.args_as_dict()
+                            queue.put_nowait(
+                                ToolStart(
+                                    tool=tool,
+                                    label=tool_label(tool, args),
+                                    args=args,
+                                    call_id=event.part.tool_call_id,
+                                )
+                            )
                         elif isinstance(event, FunctionToolResultEvent):
                             tool = event.part.tool_name or ""
-                            queue.put_nowait(ToolEnd(tool=tool, status=_tool_status(event)))
+                            result = _tool_result(event)
+                            queue.put_nowait(
+                                ToolEnd(
+                                    tool=tool,
+                                    status=str(result.get("status", "ok")),
+                                    result=result,
+                                    call_id=event.tool_call_id,
+                                )
+                            )
     finally:
         queue.put_nowait(None)
     if run.result is None:  # iter() always ends with a result unless it raised
@@ -125,10 +142,19 @@ async def stream_agent_message(
                 logger.exception("latest_record check failed for chat %s", chat_id)
             else:
                 if looked_up:
-                    yield ToolStart(tool=LATEST_RECORD, label=tool_label(LATEST_RECORD, {}))
+                    yield ToolStart(
+                        tool=LATEST_RECORD,
+                        label=tool_label(LATEST_RECORD, {}),
+                        call_id=LATEST_RECORD,
+                    )
                     deps.evidence.append(latest)
                     turn.tool_span(LATEST_RECORD, {}, latest)
-                    yield ToolEnd(tool=LATEST_RECORD, status=latest["status"])
+                    yield ToolEnd(
+                        tool=LATEST_RECORD,
+                        status=latest["status"],
+                        result=page_result(LATEST_RECORD, latest),
+                        call_id=LATEST_RECORD,
+                    )
             # The run happens in its own task and hands events over through a queue: the
             # agent's internals must start and finish in one task, and this generator may
             # be closed early (the client went away), which then just cancels that task.
@@ -160,10 +186,21 @@ async def stream_agent_message(
             # A chosen day: code fetches its exercises now. The long list never goes to the
             # model, but it is a tool result like any other: kept as evidence and checked.
             if isinstance(result.output, ShowWorkoutDay):
-                yield ToolStart(tool="planned_day", label=tool_label("planned_day", {}))
+                day_args = {"day_id": result.output.day_id}
+                yield ToolStart(
+                    tool="planned_day",
+                    label=tool_label("planned_day", day_args),
+                    args=day_args,
+                    call_id="planned_day",
+                )
                 planned = jsonable(await planned_day(conn, result.output.day_id))
                 deps.evidence.append(planned)
-                yield ToolEnd(tool="planned_day", status=planned["status"])
+                yield ToolEnd(
+                    tool="planned_day",
+                    status=planned["status"],
+                    result=page_result("planned_day", planned),
+                    call_id="planned_day",
+                )
 
             # The model chose; code writes the words, only from this turn's tool results.
             # (The output validator already sent back any choice that cites what no tool

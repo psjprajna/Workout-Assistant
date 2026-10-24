@@ -58,7 +58,24 @@ _CONTRACT: dict[str, tuple[set[str], set[str], dict[str, set[str]]]] = {
         {"status", "suggested_day_id", "data_through", "days"},
         {"days": {"day_id", "name", "in_rotation", "last_done"}},
     ),
+    # Called by code, never by the model: listed so the page shows only these keys.
+    "planned_day": (
+        {"ok", "no_rows"},
+        {"status", "day_id", "day_name", "exercises"},
+        {
+            "exercises": {
+                "exercise_id",
+                "exercise_name",
+                "timed",
+                "target_reps",
+                "last_on",
+                "last_sets",
+            }
+        },
+    ),
+    "latest_record": ({"ok", "no_rows"}, {"status", "latest_on"}, {}),
 }
+_SET_KEYS = {"set_number", "weight_kg", "reps"}
 
 ALREADY_HAVE = "you already have this result this turn; use it"
 
@@ -102,6 +119,31 @@ def tool_call_guard(ctx: RunContext["AgentDeps"], call: ToolCallInfo) -> Guardra
                 "call find_exercise first"
             )
     return GuardrailResult.allow()
+
+
+def page_result(tool: str, result: dict[str, Any]) -> dict[str, Any]:
+    """A tool result cut down to its contract keys, for the chat page.
+
+    The model's tools already pass tool_result_guard; this gives a code-called result
+    (planned_day, latest_record) the same privacy line. Unknown tools show only a status.
+    """
+    contract = _CONTRACT.get(tool)
+    if contract is None:
+        return {"status": result.get("status", "ok")}
+    _, keys, item_keys = contract
+    shown = {k: v for k, v in result.items() if k in keys}
+    for list_key, allowed in item_keys.items():
+        items = [
+            {k: v for k, v in item.items() if k in allowed} for item in shown.get(list_key, [])
+        ]
+        for item in items:
+            if "last_sets" in item:
+                item["last_sets"] = [
+                    {k: v for k, v in s.items() if k in _SET_KEYS} for s in item["last_sets"]
+                ]
+        if list_key in shown:
+            shown[list_key] = items
+    return shown
 
 
 def tool_result_guard(ctx: RunContext["AgentDeps"], info: ToolResultInfo) -> bool:

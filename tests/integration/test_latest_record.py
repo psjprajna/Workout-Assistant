@@ -45,8 +45,13 @@ async def test_the_first_message_of_the_day_looks_it_up_and_stores_it(conn, seed
     events = await say(conn, "t1")
 
     assert events[:2] == [
-        ToolStart(tool="latest_record", label="Checking how recent your data is…"),
-        ToolEnd(tool="latest_record", status="ok"),
+        ToolStart(
+            tool="latest_record",
+            label="Checking how recent your data is…",
+            args={},
+            call_id="latest_record",
+        ),
+        ToolEnd(tool="latest_record", status="ok", result=NEWEST, call_id="latest_record"),
     ]
     assert isinstance(events[-1], Final)
     [row] = await rows(conn)
@@ -83,7 +88,8 @@ async def test_the_next_day_looks_it_up_again(conn, seeded):
 async def test_no_data_is_stored_and_not_looked_up_again(conn, monkeypatch):
     events = await say(conn, "t1")
 
-    assert ToolEnd(tool="latest_record", status="no_rows") in events
+    [end] = [e for e in events if isinstance(e, ToolEnd) and e.tool == "latest_record"]
+    assert end.status == "no_rows" and end.result == {"status": "no_rows", "latest_on": None}
     [row] = await rows(conn)
     assert json.loads(row["result"]) == {"status": "no_rows", "latest_on": None}
 

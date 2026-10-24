@@ -28,7 +28,7 @@ uv run uvicorn workout_agent.api.main:app --reload              # API on :8000
 uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :8001
 ```
 
-The chat page sends every message to the API's `POST /chat/stream` (server-sent events: each tool call as it starts and ends, then the reply), so uvicorn must be running. `POST /chat` returns the same reply in one response. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
+The chat page sends every message to the API's `POST /chat/stream` (server-sent events: each tool call as it starts and ends, with its arguments and result, then the reply), so uvicorn must be running. `POST /chat` returns the same reply in one response. Both default to port 8000, hence `--port 8001` for Chainlit. Set `API_URL` in `.env` if the API runs elsewhere.
 
 Chainlit needs `CHAINLIT_AUTH_SECRET` in `.env` (it signs the session of the one built-in user, so there is no login form). Create it once:
 
@@ -36,7 +36,7 @@ Chainlit needs `CHAINLIT_AUTH_SECRET` in `.env` (it signs the session of the one
 uv run chainlit create-secret    # copy the CHAINLIT_AUTH_SECRET=... line into .env
 ```
 
-Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar. The first message of each day also looks up the date of the newest logged session (`latest_record`) and stores it in `daily_checks`; later chats that day read it. It shows as a step and in the trace, and the model never sees it.
+Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar. The first message of each day also looks up the date of the newest logged session (`latest_record`) and stores it in `daily_checks`; later chats that day read it. It shows as a step (arguments `{}`, result with the date) and in the trace, and the model never sees it. Every step expands to the tool's arguments and result; long results are cut on the page only, and code-called results show only allowlisted keys (`agents/guardrails.py` `page_result`).
 
 ## Tracing and agent evals (Langfuse)
 

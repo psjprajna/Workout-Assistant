@@ -19,9 +19,9 @@ from workout_agent.sessions.titles import chat_title
 from workout_agent.settings import Settings
 from workout_agent.ui.client import export_wanted, stream_message, upload_export
 from workout_agent.ui.data_layer import USER, ApiDataLayer
+from workout_agent.ui.steps import format_args, format_result
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart
 
-_STATUS_TEXT = {"ok": "✓ ok"}
 UPLOAD, SKIP = "upload", "skip"
 
 
@@ -102,7 +102,7 @@ async def on_message(message: cl.Message) -> None:
     # thread_id stays the same when a chat is reopened; session.id changes per connection.
     thread_id = cl.context.session.thread_id
     _data_layer.mark_pending(thread_id, chat_title(message.content, [])[0])
-    open_steps: list[tuple[str, cl.Step]] = []  # in call order, closed as results arrive
+    open_steps: list[tuple[str, str, cl.Step]] = []  # (tool, call id), closed as results arrive
     # Steps made without `async with` get no parent; nest them in this message's run, as
     # the reply is, so they show above the reply rather than after it.
     run = cl.context.current_step
@@ -113,17 +113,26 @@ async def on_message(message: cl.Message) -> None:
                 step = cl.Step(
                     name=event.label,
                     type="tool",
-                    show_input=False,
+                    show_input="json",
                     parent_id=run.id if run else None,
                 )
+                step.input = format_args(event.args)
                 step.start = utc_now()  # start without end: the page shows it as running
                 await step.send()
-                open_steps.append((event.tool, step))
+                open_steps.append((event.tool, event.call_id, step))
             elif isinstance(event, ToolEnd):
-                found = next((i for i, (t, _) in enumerate(open_steps) if t == event.tool), None)
+                # By call id, so two calls to one tool close in the right order.
+                found = next(
+                    (
+                        i
+                        for i, (tool, call_id, _) in enumerate(open_steps)
+                        if tool == event.tool and call_id == event.call_id
+                    ),
+                    None,
+                )
                 if found is not None:
-                    _, step = open_steps.pop(found)
-                    step.output = _STATUS_TEXT.get(event.status, event.status)
+                    _, _, step = open_steps.pop(found)
+                    step.output = format_result({**event.result, "status": event.status})
                     step.end = utc_now()
                     await step.update()
             elif isinstance(event, Final):

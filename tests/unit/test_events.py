@@ -16,7 +16,9 @@ from workout_agent.workflow.events import (
     "event",
     [
         ToolStart(tool="find_exercise_tool", label="Searching…"),
+        ToolStart(tool="find_exercise_tool", label="Searching…", args={"query": "x"}, call_id="c1"),
         ToolEnd(tool="find_exercise_tool", status="ambiguous"),
+        ToolEnd(tool="find_exercise_tool", status="ok", result={"status": "ok"}, call_id="c1"),
         Final(reply="Last time you did X was 8 Feb 2026:"),
         Error(message="busy"),
     ],

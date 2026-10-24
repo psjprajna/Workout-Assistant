@@ -40,7 +40,7 @@ from workout_agent.workflow.agent_chat import (
     handle_agent_message,
     stream_agent_message,
 )
-from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart, chat_event_adapter
+from workout_agent.workflow.events import Error, Final, ToolStart, chat_event_adapter
 from workout_agent.workflow.replies import HELP_TEXT
 from workout_agent.workflow.safety import SAFETY_REPLY
 from workout_agent.workflow.simple_router import simple_route
@@ -187,16 +187,24 @@ async def test_stream_reports_each_tool_then_the_reply(conn, seeded, checked_tod
     with AGENT.override(model=FunctionModel(FindThenFetch())):
         events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
 
-    assert events == [
-        ToolStart(
-            tool="find_exercise_tool",
-            label="Searching your exercises for 'barbell bench press'…",
-        ),
-        ToolEnd(tool="find_exercise_tool", status="ok"),
-        ToolStart(tool="get_last_session_tool", label="Fetching your last session…"),
-        ToolEnd(tool="get_last_session_tool", status="ok"),
-        Final(reply=BENCH_REPLY, verified=True, checked=2),
-    ]
+    find_start, find_end, last_start, last_end, final = events
+    assert find_start == ToolStart(
+        tool="find_exercise_tool",
+        label="Searching your exercises for 'barbell bench press'…",
+        args={"query": "barbell bench press"},
+        call_id=find_start.call_id,
+    )
+    assert find_end.tool == "find_exercise_tool" and find_end.status == "ok"
+    assert find_end.result["status"] == "ok"
+    assert find_end.result["matches"][0]["exercise_id"] == 2
+    assert last_start.args == {"exercise_id": 2}
+    assert last_end.status == "ok"
+    assert last_end.result["exercise_id"] == 2 and last_end.result["sets"]
+    # Each end carries the id of its start.
+    assert find_start.call_id and find_end.call_id == find_start.call_id
+    assert last_start.call_id and last_end.call_id == last_start.call_id
+    assert last_start.call_id != find_start.call_id
+    assert final == Final(reply=BENCH_REPLY, verified=True, checked=2)
     assert await _turns(conn) == 1
 
 
