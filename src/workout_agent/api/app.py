@@ -12,12 +12,10 @@ find_exercise also searches by meaning. GET /health is a simple "is it running" 
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import asdict
 from datetime import datetime
 from functools import partial
-from typing import Any
 
 import asyncpg
 from fastapi import FastAPI, HTTPException, Response
@@ -31,7 +29,6 @@ from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.embeddings.index import Embedder
 from workout_agent.embeddings.search import search_exercises
-from workout_agent.importing.refresh import RefreshResult
 from workout_agent.observability import flush_tracing
 from workout_agent.sessions import chat_store
 from workout_agent.workflow.agent_chat import handle_agent_message, stream_agent_message
@@ -39,9 +36,6 @@ from workout_agent.workflow.chat import Route, Session, handle_message
 from workout_agent.workflow.events import ChatEvent, Error, Final, chat_event_adapter
 
 logger = logging.getLogger(__name__)
-
-# The once-a-day Jefit refresh: given a connection and the Qdrant client (None: no search).
-JefitRefresh = Callable[[asyncpg.Connection, AsyncQdrantClient | None], Awaitable[RefreshResult]]
 
 HEARTBEAT_SECONDS = 5.0
 STREAM_FAILED = "Something went wrong while answering. Please try again."
@@ -88,7 +82,6 @@ def create_app(
     embedder: Embedder | None = None,
     history_turns: int = 10,
     history_full_tool_turns: int = 2,
-    jefit_refresh: JefitRefresh | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -102,11 +95,9 @@ def create_app(
         # Search by meaning only when both Qdrant and an embedder were given.
         qdrant = None
         app.state.search = None
-        app.state.qdrant = None
         if qdrant_url and embedder:
             qdrant = AsyncQdrantClient(url=qdrant_url)
             app.state.search = partial(search_exercises, qdrant, embedder)
-            app.state.qdrant = qdrant
         yield
         # Shutdown: close the pool and the Qdrant client cleanly; send any buffered traces.
         await app.state.pool.close()
@@ -115,13 +106,6 @@ def create_app(
         flush_tracing()
 
     app = FastAPI(title="Workout Agent", lifespan=lifespan)
-
-    async def refresh(conn: asyncpg.Connection) -> dict[str, Any]:
-        """The once-a-day Jefit refresh, as the plain dict the chat code stores."""
-        assert jefit_refresh is not None
-        return asdict(await jefit_refresh(conn, app.state.qdrant))
-
-    daily_refresh = refresh if jefit_refresh is not None else None
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -164,7 +148,6 @@ def create_app(
                     search=app.state.search,
                     history_turns=history_turns,
                     full_tool_turns=history_full_tool_turns,
-                    refresh=daily_refresh,
                 ):
                     yield event
             else:

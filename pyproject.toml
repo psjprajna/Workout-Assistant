@@ -11,7 +11,6 @@ dependencies = [
     "httpx>=0.28.1",
     "langfuse>=5.0.2",
     # Exact pin: harness 0.54.0 requires exactly pydantic-ai-slim 2.54.0 (docs/amendments.md §24)
-    "playwright==1.64.1",
     "pydantic-ai-harness==0.54.0",
     "pydantic-ai-slim[openrouter,typesafe]>=2.54.0",
     "pydantic-settings>=2.15.0",

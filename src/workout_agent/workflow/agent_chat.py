@@ -15,7 +15,7 @@ handle_agent_message is the same path for callers that only want the reply.
 
 import asyncio
 import logging
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import asyncpg
@@ -32,12 +32,7 @@ from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
 from workout_agent.agents.workout_agent import AgentDeps, jsonable
 from workout_agent.observability import TurnTrace
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
-from workout_agent.sessions.daily_checks import (
-    JEFIT_REFRESH,
-    LATEST_RECORD,
-    latest_record_today,
-    refresh_today,
-)
+from workout_agent.sessions.daily_checks import LATEST_RECORD, latest_record_today
 from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
@@ -108,7 +103,6 @@ async def stream_agent_message(
     search: Searcher | None = None,
     history_turns: int = 10,
     full_tool_turns: int = 2,
-    refresh: Callable[[asyncpg.Connection], Awaitable[dict[str, Any]]] | None = None,
 ) -> AsyncGenerator[ChatEvent]:
     # The trace for this turn; finish() records how it ended (observability.py).
     turn = TurnTrace(chat_id, text)
@@ -123,20 +117,6 @@ async def stream_agent_message(
             history, last_turn = await load_history(conn, chat_id, history_turns)
             history = shrink_old_tool_results(history, full_tool_turns)
             deps = AgentDeps(conn=conn, search=search)  # fresh evidence list for each question
-            # Once a day, the first message brings the data up to date from Jefit (when the
-            # app was given a refresh), before anything below reads it. A failure is a value:
-            # the step shows why, and the answer comes from the data already loaded.
-            if refresh is not None:
-                try:
-                    ran, did_run = await refresh_today(conn, deps.today, lambda: refresh(conn))
-                except Exception:
-                    logger.exception("jefit refresh failed for chat %s", chat_id)
-                else:
-                    if did_run and ran is not None:
-                        yield ToolStart(tool=JEFIT_REFRESH, label=tool_label(JEFIT_REFRESH, {}))
-                        deps.evidence.append(ran)
-                        turn.tool_span(JEFIT_REFRESH, {}, ran)
-                        yield ToolEnd(tool=JEFIT_REFRESH, status=ran["status"], note=ran["note"])
             # Once a day, the first message looks up how recent the history is; later chats
             # read the stored result. Stored and traced only: the model never sees it.
             try:

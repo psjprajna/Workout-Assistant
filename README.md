@@ -60,22 +60,6 @@ uv run python scripts/eval_agent.py my-change
 
 uploads the cases in `src/workout_agent/evals/agent.py` as the dataset `agent-turns` and runs them as an experiment named `<date>-my-change`: one trace per case, scores per case (all checks, kind, trajectory, verified, tokens) and run scores for the `docs/amendments.md` §9 budgets (`budget_*`). Compare runs under Datasets -> agent-turns. The summary is also saved to `evals/results/`.
 
-## Daily Jefit refresh
-
-The first chat message of each day downloads your Jefit export, imports it, re-indexes exercises and checks how recent the history is, shown as steps before the answer. Put your Jefit login in `.env` and install the browser once:
-
-```sh
-JEFIT_EMAIL=you@example.com
-JEFIT_PASSWORD=...
-```
-
-```sh
-uv run playwright install chromium
-uv run python scripts/fetch_jefit.py --headed --load    # try it, watching the browser
-```
-
-Without the login the step says so and the chat answers from the data already loaded. A failed refresh is not retried until tomorrow; to retry now, run `delete from daily_checks where check_name = 'jefit_refresh';` in the `workout` database.
-
 ## Importing a Jefit export
 
 ```sh
