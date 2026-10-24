@@ -80,6 +80,16 @@ class TurnTrace:
             )
         self.context.run(self._close)
 
+    def tool_span(self, name: str, input: Any, output: Any) -> None:
+        """Record a tool that code (not the model) called, as a child of this turn's span."""
+        if self._span is None:
+            return
+        self.context.run(
+            lambda: self._span.start_observation(  # pyright: ignore[reportOptionalMemberAccess]
+                name=name, as_type="tool", input=input, output=output
+            ).end()
+        )
+
     def _close(self) -> None:
         for manager in self._managers:
             manager.__exit__(None, None, None)

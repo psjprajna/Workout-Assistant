@@ -5,8 +5,12 @@ seeded - conn plus two bench presses with one set each.
 This keeps tests away from your real workout data.
 """
 
+import socket
+import subprocess
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
+from urllib.parse import urlparse
 
 import asyncpg
 import httpx
@@ -41,6 +45,26 @@ def pytest_runtest_call(item):
         raise
 
 
+def _postgres_is_up() -> bool:
+    url = urlparse(Settings().database_url)
+    try:
+        with socket.create_connection((url.hostname or "localhost", url.port or 5432), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def services_are_up():
+    """Open Docker and start Postgres and Qdrant when Postgres isn't answering."""
+    if _postgres_is_up():
+        return
+    script = Path(__file__).parents[2] / "scripts" / "ensure_docker.sh"
+    started = subprocess.run([script], capture_output=True, text=True)
+    if started.returncode != 0 or not _postgres_is_up():
+        pytest.exit(f"Postgres is down and {script.name} could not start it:\n{started.stderr}", 1)
+
+
 def _with_database(url: str, name: str) -> str:
     return url.rsplit("/", 1)[0] + "/" + name
 
@@ -70,7 +94,8 @@ async def conn():
     try:
         await apply_migrations(connection)
         await connection.execute(
-            "truncate chat_turns, chats, sets, exercise_logs, exercises, routines cascade"
+            "truncate chat_turns, chats, daily_checks, sets, exercise_logs, exercises, routines "
+            "cascade"
         )
         yield connection
     finally:
@@ -96,4 +121,14 @@ async def seeded(conn):
             (10, 1, Decimal("80.00"), Decimal("80.00"), 8),
             (11, 1, Decimal("60.00"), Decimal("60.00"), 10),
         ],
+    )
+
+@pytest.fixture
+async def checked_today(conn):
+    """Today's latest_record check already stored, so a chat's events show only its own tools."""
+    await conn.execute(
+        "insert into daily_checks (check_name, checked_on, result) values ($1, $2, $3)",
+        "latest_record",
+        date.today(),
+        '{"status": "no_rows", "latest_on": null}',
     )

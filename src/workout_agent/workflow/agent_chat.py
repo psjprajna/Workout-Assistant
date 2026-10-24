@@ -14,6 +14,7 @@ handle_agent_message is the same path for callers that only want the reply.
 """
 
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -31,6 +32,7 @@ from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
 from workout_agent.agents.workout_agent import AgentDeps, jsonable
 from workout_agent.observability import TurnTrace
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
+from workout_agent.sessions.daily_checks import LATEST_RECORD, latest_record_today
 from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
@@ -43,6 +45,8 @@ from workout_agent.workflow.replies import (
     verify_agent_reply,
 )
 from workout_agent.workflow.safety import SafetyRefused
+
+logger = logging.getLogger(__name__)
 
 BUSY_REPLY = "This chat is busy answering another message. Please send yours again."
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
@@ -113,6 +117,18 @@ async def stream_agent_message(
             history, last_turn = await load_history(conn, chat_id, history_turns)
             history = shrink_old_tool_results(history, full_tool_turns)
             deps = AgentDeps(conn=conn, search=search)  # fresh evidence list for each question
+            # Once a day, the first message looks up how recent the history is; later chats
+            # read the stored result. Stored and traced only: the model never sees it.
+            try:
+                latest, looked_up = await latest_record_today(conn, deps.today)
+            except Exception:  # a freshness problem must not block the answer
+                logger.exception("latest_record check failed for chat %s", chat_id)
+            else:
+                if looked_up:
+                    yield ToolStart(tool=LATEST_RECORD, label=tool_label(LATEST_RECORD, {}))
+                    deps.evidence.append(latest)
+                    turn.tool_span(LATEST_RECORD, {}, latest)
+                    yield ToolEnd(tool=LATEST_RECORD, status=latest["status"])
             # The run happens in its own task and hands events over through a queue: the
             # agent's internals must start and finish in one task, and this generator may
             # be closed early (the client went away), which then just cancels that task.

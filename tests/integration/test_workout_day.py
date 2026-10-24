@@ -101,7 +101,7 @@ class TodaysWorkout:
         )])
 
 
-async def test_whats_my_workout_today(plan):
+async def test_whats_my_workout_today(plan, checked_today):
     model = TodaysWorkout()
     with AGENT.override(model=FunctionModel(model)):
         events = [e async for e in stream_agent_message(plan, "t1", "what's my workout today?",

@@ -224,7 +224,7 @@ async def run_case(
         with capture_run_messages() as messages:
             try:
                 async for event in stream_agent_message(conn, chat_id, turn.message, agent):
-                    if event.kind == "tool_end":
+                    if event.kind == "tool_end" and event.tool != "latest_record":
                         statuses.append(event.status)
                     elif isinstance(event, Final):
                         reply, verified = event.reply, event.verified

@@ -183,7 +183,7 @@ async def _turns(conn) -> int:
     return await conn.fetchval("select count(*) from chat_turns")
 
 
-async def test_stream_reports_each_tool_then_the_reply(conn, seeded):
+async def test_stream_reports_each_tool_then_the_reply(conn, seeded, checked_today):
     with AGENT.override(model=FunctionModel(FindThenFetch())):
         events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
 
@@ -237,7 +237,7 @@ async def test_a_message_while_the_chat_is_answering_is_busy_at_once(
     assert await conn.fetchval("select count(*) from chat_turns where chat_id = 't1'") == 0
 
 
-async def test_chat_stream_endpoint_sends_sse_events(seeded, test_database_url):
+async def test_chat_stream_endpoint_sends_sse_events(seeded, checked_today, test_database_url):
     with AGENT.override(model=FunctionModel(FindThenFetch())):
         async with _api(test_database_url) as c:
             async with c.stream(
@@ -253,7 +253,7 @@ async def test_chat_stream_endpoint_sends_sse_events(seeded, test_database_url):
 
 
 async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
-    seeded, test_database_url
+    seeded, checked_today, test_database_url
 ):
     def broken(messages, info):
         raise RuntimeError("model down")
@@ -270,7 +270,9 @@ async def test_chat_stream_endpoint_turns_a_failure_into_an_error_event(
 # --- Typed answers: code writes the reply, only from this turn's tool results --------
 
 
-async def test_an_answer_about_an_unfetched_id_is_sent_back_to_the_model(conn, seeded):
+async def test_an_answer_about_an_unfetched_id_is_sent_back_to_the_model(
+    conn, seeded, checked_today
+):
     retries: list[str] = []
 
     def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -337,7 +339,9 @@ async def test_ask_which_then_a_number_shows_that_option(conn, seeded):
 # --- Guardrails: the safety screen, tool calls and tool results ----------------------
 
 
-async def test_a_safety_message_is_refused_without_calling_the_model(conn, seeded):
+async def test_a_safety_message_is_refused_without_calling_the_model(
+    conn, seeded, checked_today
+):
     def never(messages, info):
         raise AssertionError("the model must not see a refused message")
 

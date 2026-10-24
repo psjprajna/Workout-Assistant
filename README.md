@@ -1,10 +1,10 @@
 # Workout RAG Assistant
 
-A chat assistant that answers questions about one user's own workout plan and history from her Jefit export, using only retrieved data, with every recommendation backed by an evidence record. Requirements and the original design are in `docs/workout_agent_requirements_and_design.pdf` (baseline October 2026). This repository holds the design work done since; there is no application code yet.
+A chat assistant that answers questions about one user's own workout plan and history from her Jefit export, using only retrieved data, with every recommendation backed by an evidence record. Requirements and the original design are in `docs/workout_agent_requirements_and_design.pdf` (baseline October 2026). This repository holds the design work done since and the application built from it: a single tool-calling agent (`src/workout_agent/agents/`, `workflow/agent_chat.py`) served by FastAPI and a Chainlit chat page. Three of the fourteen designed tools exist so far (`find_exercise`, `get_last_session`, `workout_days`).
 
-## State on 2026-10-06
+## Design decisions (2026-10-06)
 
-Design phase complete. Decisions made, each argued in a document:
+Decisions made at the end of the design phase, each argued in a document. The build has since followed them with the changes recorded in `docs/amendments.md` (for example the single-agent loop and Postgres chat tables in place of DBOS for now):
 
 | Decision | Choice | Where |
 |---|---|---|
@@ -17,12 +17,13 @@ Design phase complete. Decisions made, each argued in a document:
 | Session state | DBOS workflow per chat first; Redis as the competing option and a later speed improvement | `docs/amendments.md` §22, §24 |
 | Evals and tracing | Langfuse, self-hosted, code evaluators, budgets as run-level scores | `docs/amendments.md` §25 |
 
-Next: phase 1 of the build order in `docs/amendments.md` §27.
+The build order is in `docs/amendments.md` §27.
 
 ## Running the chat
 
 ```sh
 docker compose up -d                                            # Postgres, Qdrant, Langfuse
+scripts/ensure_docker.sh                                        # opens Docker if it is down, starts Postgres and Qdrant
 uv run uvicorn workout_agent.api.main:app --reload              # API on :8000
 uv run chainlit run src/workout_agent/ui/chat.py --port 8001    # chat page on :8001
 ```
@@ -35,7 +36,7 @@ Chainlit needs `CHAINLIT_AUTH_SECRET` in `.env` (it signs the session of the one
 uv run chainlit create-secret    # copy the CHAINLIT_AUTH_SECRET=... line into .env
 ```
 
-Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar.
+Chats are saved in Postgres (`chats`, `chat_turns`) by the API after each answered message, so they survive restarts of both servers. Each visit or "New chat" starts a blank chat; it appears in the sidebar once you send a message, named after the exercise it found (else the first message). Clicking a past chat shows its messages, and the next message continues it: the agent gets the last `HISTORY_TURNS` turns (default 10), with full tool results only for the newest `HISTORY_FULL_TOOL_TURNS` (default 2). Rename and delete work from the sidebar. The first message of each day also looks up the date of the newest logged session (`latest_record`) and stores it in `daily_checks`; later chats that day read it. It shows as a step and in the trace, and the model never sees it.
 
 ## Tracing and agent evals (Langfuse)
 
