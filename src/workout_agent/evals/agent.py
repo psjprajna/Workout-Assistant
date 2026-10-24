@@ -10,6 +10,7 @@ only scores phrasing (answers_question, clear_and_brief): the safety screen, the
 check and faithfulness stay code-checked. scripts/eval_agent.py runs it.
 """
 
+import json
 import statistics
 import time
 from dataclasses import asdict, dataclass, field
@@ -20,7 +21,14 @@ import asyncpg
 from langfuse import Evaluation, Langfuse
 from langfuse.experiment import ExperimentItemResult
 from pydantic_ai import Agent, capture_run_messages
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ToolCallPart,
+    ToolReturnPart,
+)
+from pydantic_core import to_jsonable_python
 
 from workout_agent.evals.judge import QUESTIONS, Verdict, judge_one
 from workout_agent.workflow.agent_chat import stream_agent_message
@@ -117,6 +125,10 @@ class TurnResult:
     input_tokens: int
     output_tokens: int
     errors: list[str] = field(default_factory=list)
+    # What the tools returned, for the offline Ragas scorer. Defaults keep old results loading.
+    contexts: list[str] = field(default_factory=list)  # data tool results, as JSON
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)  # {"tool", "args"}, in order
+    offered_ids: list[int] = field(default_factory=list)  # ids offered by an ambiguous find
 
 
 def item_id(case: str) -> str:
@@ -148,6 +160,29 @@ def turns_of(item: Any) -> tuple[str, list[Turn]]:
 
 def _new_responses(messages: list[ModelMessage], since: datetime) -> list[ModelResponse]:
     return [m for m in messages if isinstance(m, ModelResponse) and m.timestamp >= since]
+
+
+def _new_returns(messages: list[ModelMessage], since: datetime) -> list[ToolReturnPart]:
+    """This turn's data tool results (not the typed output's), in order."""
+    return [
+        p
+        for m in messages
+        if isinstance(m, ModelRequest)
+        for p in m.parts
+        if isinstance(p, ToolReturnPart)
+        and p.timestamp >= since
+        and p.tool_name in (FIND, LAST, DAYS)
+    ]
+
+
+def _offered(returns: list[ToolReturnPart]) -> list[int]:
+    """The exercise ids find_exercise offered the user to pick from."""
+    offered: list[int] = []
+    for r in returns:
+        content = to_jsonable_python(r.content)
+        if r.tool_name == FIND and content.get("status") == "ambiguous":
+            offered += [int(m["exercise_id"]) for m in content["matches"]]
+    return offered
 
 
 def _kind(
@@ -207,6 +242,7 @@ async def run_case(
             if c.tool_name == "final_result_ShowWorkoutDay"
         ]
         fetched = [int(c.args_as_dict()["exercise_id"]) for c in calls if c.tool_name == LAST]
+        returns = _new_returns(messages, since)
         kind, output = _kind(tools, calls, statuses)
         if reply == SAFETY_REPLY:
             kind = "refuse"
@@ -224,6 +260,13 @@ async def run_case(
             seconds=round(seconds, 2),
             input_tokens=sum(r.usage.input_tokens for r in responses),
             output_tokens=sum(r.usage.output_tokens for r in responses),
+            contexts=[json.dumps(to_jsonable_python(r.content)) for r in returns],
+            tool_calls=[
+                {"tool": c.tool_name, "args": c.args_as_dict()}
+                for c in calls
+                if c.tool_name in (FIND, LAST, DAYS)
+            ],
+            offered_ids=_offered(returns),
         )
         if kind != turn.kind:
             result.errors.append(f"kind {kind} != {turn.kind}")
@@ -290,6 +333,39 @@ def judge_case(judge: Agent[None, Verdict]) -> Any:
         if failed:
             scores.append(Evaluation(name="judge_errors", value=len(failed), comment=failed[0]))
         return scores
+
+    return evaluate
+
+
+def ragas_case(scorer: Any) -> Any:
+    """An item evaluator: the mean of each Ragas score over this case's scored turns.
+
+    Refusal turns are skipped. A failed Ragas call is recorded as ragas_errors and left out of
+    the means; it never fails the run. Imported here so the app and tests do not need the
+    `eval` group.
+    """
+    from workout_agent.evals.ragas_scores import METRICS, score_turn
+
+    async def evaluate(
+        *, output: list[dict[str, Any]], expected_output: Any, **_: Any
+    ) -> list[Evaluation]:
+        expected = [Turn(**t) for t in expected_output["turns"]]
+        scored = [
+            await score_turn(scorer, r, e.exercise_id)
+            for r, e in zip(output, expected, strict=True)
+            if r["kind"] != "refuse"
+        ]
+        failed = [e for s in scored for e in s["errors"]]
+        evaluations = []
+        for name in METRICS:
+            values = [s["scores"][name] for s in scored if name in s["scores"]]
+            if values:
+                evaluations.append(Evaluation(name=name, value=statistics.mean(values)))
+        if failed:
+            evaluations.append(
+                Evaluation(name="ragas_errors", value=len(failed), comment=failed[0])
+            )
+        return evaluations
 
     return evaluate
 

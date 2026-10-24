@@ -51,6 +51,8 @@ With the keys set, every agent message is a `chat-turn` trace: the agent run, ea
 
 The agent experiment also scores `answers_question` and `clear_and_brief` per case with an offline Sonnet 5.5 judge (needs `OPENROUTER_API_KEY`); it scores phrasing only, next to the code checks.
 
+It also adds offline Ragas scores per case (`ragas_faithfulness`, `ragas_answer_relevancy`, `ragas_id_precision`, `ragas_id_recall`, and `ragas_errors` when a call fails; needs `uv sync --group eval`). They are informational: `verified` and `budget_faithfulness` stay code-checked, and answer relevancy scores a clarifying question or "not found" reply as near 0, so read it only on replies that give data (docs/amendments.md §25).
+
 ```sh
 uv run python scripts/eval_agent.py my-change
 ```

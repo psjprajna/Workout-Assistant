@@ -50,3 +50,13 @@ dev = [
     "pytest-httpx>=0.36.2",
     "ruff>=0.16.10",
 ]
+# Offline evals only: the app never imports it (docs/amendments.md §24)
+eval = [
+    "ragas==0.4.3",
+    "pillow>=10.4.0",
+]
+
+[tool.uv]
+# instructor (via ragas) caps jiter below what openai>=3.19 (pydantic-ai-slim 2.54.0) needs
+override-dependencies = ["jiter>=0.16"]
+constraint-dependencies = ["websockets>=17.2"]
