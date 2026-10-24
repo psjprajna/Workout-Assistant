@@ -49,3 +49,36 @@ async def stream_message(
         yield Error(message=_status_error(e))
     except httpx.RequestError:
         yield Error(message=_unreachable(client))
+
+
+async def export_wanted(client: httpx.AsyncClient) -> str | None:
+    """None, or the newest session date text ("none yet" if empty), when the page should
+    ask for a newer Jefit export. Only the first call of the day can say yes.
+    """
+    try:
+        response = await client.post("/data/prompt")
+        response.raise_for_status()
+    except httpx.HTTPError:
+        return None  # can't ask now; the message goes on with the data already loaded
+    body = response.json()
+    return (body["latest_on"] or "none yet") if body["ask"] else None
+
+
+async def upload_export(client: httpx.AsyncClient, content: bytes) -> str:
+    """Send an uploaded export file to the API; returns one line saying what happened."""
+    try:
+        response = await client.post(
+            "/data/import", content=content, headers={"Content-Type": "text/csv"}, timeout=300
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        return _status_error(e)
+    except httpx.RequestError:
+        return _unreachable(client)
+    body = response.json()
+    if body["status"] != "ok":
+        return f"That file was not imported: {body['note']}"
+    return (
+        f"Imported {body['logs']} logged sessions; your data now runs through "
+        f"{body['latest_on']}."
+    )

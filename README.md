@@ -60,6 +60,10 @@ uv run python scripts/eval_agent.py my-change
 
 uploads the cases in `src/workout_agent/evals/agent.py` as the dataset `agent-turns` and runs them as an experiment named `<date>-my-change`: one trace per case, scores per case (all checks, kind, trajectory, verified, tokens) and run scores for the `docs/amendments.md` §9 budgets (`budget_*`). Compare runs under Datasets -> agent-turns. The summary is also saved to `evals/results/`.
 
+## Updating your data from the chat
+
+On the first message of each day (unless your newest logged session is today's), the chat page asks "Is there a newer Jefit export?" with Upload / Skip. Download the export from Jefit's export page, choose Upload and pick the .csv: the API imports it (history only grows, the routine is replaced), re-indexes exercises in Qdrant, and the message you sent is then answered from the new data. A file that isn't a Jefit export is turned away and changes nothing. It asks once a day, however you answer; `scripts/load_jefit.py` below does the same import from the command line.
+
 ## Importing a Jefit export
 
 ```sh

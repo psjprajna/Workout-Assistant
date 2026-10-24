@@ -17,11 +17,12 @@ from starlette.datastructures import Headers
 
 from workout_agent.sessions.titles import chat_title
 from workout_agent.settings import Settings
-from workout_agent.ui.client import stream_message
+from workout_agent.ui.client import export_wanted, stream_message, upload_export
 from workout_agent.ui.data_layer import USER, ApiDataLayer
 from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart
 
 _STATUS_TEXT = {"ok": "✓ ok"}
+UPLOAD, SKIP = "upload", "skip"
 
 
 def _results(n: int) -> str:
@@ -68,9 +69,36 @@ async def resume(thread: cl.types.ThreadDict) -> None:
     cl.user_session.set("client", _new_client())
 
 
+async def ask_for_export(client: httpx.AsyncClient, latest_on: str) -> None:
+    """Offer to import a newer Jefit export: the first message of the day only."""
+    choice = await cl.AskActionMessage(
+        content=f"Your data runs through {latest_on}. Is there a newer Jefit export?",
+        actions=[
+            cl.Action(name=UPLOAD, payload={"value": UPLOAD}, label="Upload the latest export"),
+            cl.Action(name=SKIP, payload={"value": SKIP}, label="Skip, use what I have"),
+        ],
+        timeout=300,
+    ).send()
+    if not choice or choice.get("payload", {}).get("value") != UPLOAD:
+        return
+    files = await cl.AskFileMessage(
+        content="Please upload your Jefit export (the .csv from Jefit's export page).",
+        accept=["text/csv", ".csv"],
+        max_size_mb=20,
+        timeout=600,
+    ).send()
+    if not files:
+        return
+    with open(files[0].path, "rb") as file:
+        content = file.read()
+    await cl.Message(content=await upload_export(client, content)).send()
+
+
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     client: httpx.AsyncClient = cl.user_session.get("client")  # type: ignore[assignment]
+    if (latest_on := await export_wanted(client)) is not None:
+        await ask_for_export(client, latest_on)
     # thread_id stays the same when a chat is reopened; session.id changes per connection.
     thread_id = cl.context.session.thread_id
     _data_layer.mark_pending(thread_id, chat_title(message.content, [])[0])

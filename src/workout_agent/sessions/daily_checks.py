@@ -14,6 +14,7 @@ from workout_agent.agents.workout_agent import jsonable
 from workout_agent.tools.latest_record import latest_record
 
 LATEST_RECORD = "latest_record"
+EXPORT_PROMPT = "export_prompt"
 
 
 async def _stored(conn: asyncpg.Connection, name: str, today: date) -> dict[str, Any] | None:
@@ -41,3 +42,26 @@ async def latest_record_today(
         json.dumps(result),
     )
     return await _stored(conn, LATEST_RECORD, today) or result, True
+
+
+async def ask_for_export_today(conn: asyncpg.Connection, today: date) -> tuple[bool, date | None]:
+    """Whether the chat page should ask for a newer export now, and the newest session date.
+
+    True for the first call of the day only (the stored row makes every later call, from
+    any chat, False), and not at all when the newest session is today's.
+    """
+    first_call = await conn.fetchval(
+        "INSERT INTO daily_checks (check_name, checked_on, result) VALUES ($1, $2, '{}') "
+        "ON CONFLICT DO NOTHING RETURNING 1",
+        EXPORT_PROMPT,
+        today,
+    )
+    latest_on = await conn.fetchval("SELECT max(performed_on) FROM exercise_logs")
+    return first_call is not None and latest_on != today, latest_on
+
+
+async def forget_latest_record(conn: asyncpg.Connection, today: date) -> None:
+    """Drop today's stored freshness result so the next message looks it up again."""
+    await conn.execute(
+        "DELETE FROM daily_checks WHERE check_name = $1 AND checked_on = $2", LATEST_RECORD, today
+    )

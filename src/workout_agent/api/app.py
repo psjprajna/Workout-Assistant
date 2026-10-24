@@ -14,11 +14,13 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from dataclasses import asdict
+from datetime import date, datetime
 from functools import partial
+from typing import Any
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
@@ -29,8 +31,9 @@ from workout_agent.agents.workout_agent import AgentDeps
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.embeddings.index import Embedder
 from workout_agent.embeddings.search import search_exercises
+from workout_agent.importing.upload import ImportResult, import_export
 from workout_agent.observability import flush_tracing
-from workout_agent.sessions import chat_store
+from workout_agent.sessions import chat_store, daily_checks
 from workout_agent.workflow.agent_chat import handle_agent_message, stream_agent_message
 from workout_agent.workflow.chat import Route, Session, handle_message
 from workout_agent.workflow.events import ChatEvent, Error, Final, chat_event_adapter
@@ -95,9 +98,12 @@ def create_app(
         # Search by meaning only when both Qdrant and an embedder were given.
         qdrant = None
         app.state.search = None
+        app.state.qdrant = None
+        app.state.embedder = embedder
         if qdrant_url and embedder:
             qdrant = AsyncQdrantClient(url=qdrant_url)
             app.state.search = partial(search_exercises, qdrant, embedder)
+            app.state.qdrant = qdrant
         yield
         # Shutdown: close the pool and the Qdrant client cleanly; send any buffered traces.
         await app.state.pool.close()
@@ -110,6 +116,26 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post("/data/prompt")
+    async def data_prompt() -> dict[str, Any]:
+        """Should the chat page ask for a newer Jefit export? True once a day, at most."""
+        async with app.state.pool.acquire() as conn:
+            ask, latest_on = await daily_checks.ask_for_export_today(conn, date.today())
+        return {"ask": ask, "latest_on": latest_on.isoformat() if latest_on else None}
+
+    @app.post("/data/import")
+    async def data_import(request: Request) -> dict[str, Any]:
+        """Import the Jefit export sent as the request body (the file's text)."""
+        try:
+            text = (await request.body()).decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return asdict(ImportResult("rejected", "the file is not text"))
+        async with app.state.pool.acquire() as conn:
+            result = await import_export(conn, text, app.state.qdrant, app.state.embedder)
+            if result.status == "ok":  # the freshness check should see the new data
+                await daily_checks.forget_latest_record(conn, date.today())
+        return asdict(result)
 
     @app.post("/chat", response_model=ChatResponse)
     async def chat(request: ChatRequest) -> ChatResponse:
