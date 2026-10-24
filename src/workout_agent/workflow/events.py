@@ -20,6 +20,7 @@ class ToolEnd(BaseModel):
     kind: Literal["tool_end"] = "tool_end"
     tool: str
     status: str  # the tool result's status: ok / ambiguous / no_rows, or "error"
+    note: str = ""  # one line for the page when the status needs explaining
 
 
 class Final(BaseModel):
@@ -46,6 +47,8 @@ def tool_label(tool: str, args: dict[str, Any]) -> str:
         return "Fetching your last session…"
     if tool == "workout_days_tool":
         return "Checking which workout day is next…"
+    if tool == "jefit_refresh":
+        return "Updating your data from Jefit (this can take a minute)…"
     if tool == "latest_record":
         return "Checking how recent your data is…"
     if tool == "planned_day":

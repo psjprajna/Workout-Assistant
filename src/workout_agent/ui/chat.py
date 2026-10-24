@@ -95,7 +95,9 @@ async def on_message(message: cl.Message) -> None:
                 found = next((i for i, (t, _) in enumerate(open_steps) if t == event.tool), None)
                 if found is not None:
                     _, step = open_steps.pop(found)
-                    step.output = _STATUS_TEXT.get(event.status, event.status)
+                    step.output = _STATUS_TEXT.get(event.status, event.status) + (
+                        f": {event.note}" if event.note else ""
+                    )
                     step.end = utc_now()
                     await step.update()
             elif isinstance(event, Final):

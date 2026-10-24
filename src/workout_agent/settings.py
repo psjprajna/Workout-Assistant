@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr | None = None
     typesafe_api_key: SecretStr | None = None
 
+    # Jefit login, to download the daily export (importing/jefit_export.py). Off unless both set.
+    jefit_email: str | None = None
+    jefit_password: SecretStr | None = None
+
     # Langfuse tracing (docker-compose.yml). Off unless both keys are set.
     langfuse_public_key: SecretStr | None = None
     langfuse_secret_key: SecretStr | None = None
