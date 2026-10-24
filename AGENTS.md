@@ -2,27 +2,37 @@
 
 ## Project Structure & Module Organization
 
-This repository currently contains no application code, tests, assets, or build configuration. The directory name is `rag-workout-assistant`; its implementation and architecture are not yet established.
+Python 3.12 package `workout_agent` in `src/workout_agent/`:
 
-When adding the initial implementation, keep application code, tests, and supporting assets in clearly named directories. Document their actual locations here. Keep related functionality together and avoid speculative layers or unused scaffolding.
+- `agents/`, `workflow/`: the tool-calling agent, guardrails, safety screen and chat flow
+- `tools/`: read-only tools (`docs/tools.md` contract); `repositories/`, `db/`, `sessions/`, `schemas/`: data access and chat storage
+- `embeddings/`, `importing/`, `catalog.py`: exercise search and the Jefit import
+- `api/`: FastAPI app; `ui/`: Chainlit chat page
+- `evals/`: offline evals (Langfuse experiments, reply judge, Ragas scores)
+
+Outside the package: `tests/` (`unit/`, `integration/`, `failure/`, `concurrency/`, `fixtures/`; the last two are empty so far), `scripts/` (runnable entry points), `migrations/` (numbered SQL), `config/`, `evals/` (cases, labels, saved results), `data/` (your Jefit export, private), `docs/` (requirements, `amendments.md`, design notes).
 
 ## Build, Test, and Development Commands
 
-No build, test, lint, or local run commands are configured yet. Do not assume that commands such as `npm test` or `pytest` are available.
+Run everything from the repository root with `uv`:
 
-The first implementation should include its dependency manifest and document exact setup, run, and verification commands in a `README.md`. Prefer the chosen ecosystem’s standard tooling and keep commands reproducible from the repository root.
+- `uv sync --group dev` installs the app and test tools; add `--group eval` for the Ragas scorer.
+- `docker compose up -d` starts Postgres (port 5433), Qdrant and Langfuse. Integration tests need Postgres and Qdrant. `scripts/ensure_docker.sh` opens Docker if it is down and starts just those two; the integration tests run it themselves when Postgres isn't answering.
+- `uv run pytest tests/unit` needs nothing running; `uv run pytest tests/integration -m "not llm and not search_eval"` skips the tests that call a real model or need your search index.
+- `uv run ruff check .` lints; `uv run pyright` type checks.
+- Run the app and the evals as the `README.md` describes.
 
 ## Coding Style & Naming Conventions
 
-No language or formatter has been selected. Follow the selected language’s standard indentation and naming conventions, and configure its standard formatter when introducing code. Use descriptive names and consistent formatting within each module. Avoid adding dependencies for functionality already provided by the standard library.
+Ruff sets the style (line length 100; rules E, F, I, B, UP). Use descriptive names and match the surrounding module. Avoid adding dependencies for functionality already provided by the standard library, and record any new framework or store in `docs/amendments.md` §24.
 
 ## Testing Guidelines
 
-No test framework or coverage threshold exists yet. Add focused, runnable tests for new behavior and bug fixes using the selected stack’s conventional framework. Name tests after the behavior they verify; include invalid input and failure cases where relevant. Document how to run tests before requesting review.
+Tests use pytest with `asyncio_mode = "auto"`; markers `llm` (calls a real model) and `search_eval` (needs your real index). Add focused, runnable tests for new behavior and bug fixes, named after the behavior they verify, including invalid input and failure cases.
 
 ## Commit & Pull Request Guidelines
 
-No Git metadata or commit history is present, so no existing commit convention can be inferred. Use concise, imperative commit subjects, such as `Add workout input validation`.
+Use concise, imperative commit subjects, such as `Add workout input validation`.
 
 Pull requests should describe the problem, changes, and verification performed. Link relevant issues when available. Include screenshots for visible UI changes and call out configuration changes or new dependencies.
 
