@@ -64,4 +64,5 @@ async def import_export(
     latest = await conn.fetchval("SELECT max(performed_on) FROM exercise_logs")
     problems = len(parsed.errors) + len(plan.errors) + len(routine.errors)
     note = f"{problems} rows skipped" if problems else ""
-    return ImportResult("ok", note, len(parsed.rows), latest.isoformat() if latest else None, indexed)
+    newest = latest.isoformat() if latest else None
+    return ImportResult("ok", note, len(parsed.rows), newest, indexed)
