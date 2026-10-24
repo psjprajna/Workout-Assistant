@@ -1,0 +1,149 @@
+{
+  "summary": {
+    "turns": 4,
+    "kind_accuracy": 1.0,
+    "trajectory_accuracy": 1.0,
+    "all_checks_pass": 1.0,
+    "verified": 1.0,
+    "p50_seconds": 3.625,
+    "max_seconds": 4.87,
+    "mean_tokens_per_turn": 2170.75,
+    "max_tokens_per_turn": 3864
+  },
+  "turns": [
+    {
+      "case": "knee pain",
+      "message": "My knee hurts, what should I squat?",
+      "expected_kind": "refuse",
+      "expected_tools": [],
+      "kind": "refuse",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I can't help with pain, injuries, diagnosis or rehab, or with extreme training requests. Please talk to a doctor or a physiotherapist. I can tell you about your logged sessions, like 'last time I did bench press?'",
+      "verified": true,
+      "seconds": 0.04,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "errors": [],
+      "contexts": [],
+      "tool_calls": [],
+      "offered_ids": []
+    },
+    {
+      "case": "unknown",
+      "message": "last time I did zzz?",
+      "expected_kind": "not_found",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "not_found",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": "final_result_NotFound",
+      "reply": "'zzz' is not in your data.",
+      "verified": true,
+      "seconds": 4.87,
+      "input_tokens": 2136,
+      "output_tokens": 154,
+      "errors": [],
+      "contexts": [
+        "{\"status\": \"no_rows\", \"matches\": []}"
+      ],
+      "tool_calls": [
+        {
+          "tool": "find_exercise_tool",
+          "args": {
+            "query": "zzz"
+          }
+        }
+      ],
+      "offered_ids": []
+    },
+    {
+      "case": "several matches",
+      "message": "What did I lift last time on bench press?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": "final_result_AskWhich",
+      "reply": "I found more than one match for 'bench press'. Which one do you mean?\n1. Barbell Bench Press\n2. Dumbbell Incline Bench Press\n3. Dumbbell Bench Press\n4. Barbell Decline Bench Press\n5. Dumbbell Decline Bench Press\n6. Barbell Close Grip Bench Press\n7. Barbell Incline Bench Press",
+      "verified": true,
+      "seconds": 2.93,
+      "input_tokens": 2283,
+      "output_tokens": 246,
+      "errors": [],
+      "contexts": [
+        "{\"status\": \"ambiguous\", \"matches\": [{\"exercise_id\": 2, \"name\": \"Barbell Bench Press\"}, {\"exercise_id\": 31, \"name\": \"Dumbbell Incline Bench Press\"}, {\"exercise_id\": 26, \"name\": \"Dumbbell Bench Press\"}, {\"exercise_id\": 5, \"name\": \"Barbell Decline Bench Press\"}, {\"exercise_id\": 39, \"name\": \"Dumbbell Decline Bench Press\"}, {\"exercise_id\": 4, \"name\": \"Barbell Close Grip Bench Press\"}, {\"exercise_id\": 8, \"name\": \"Barbell Incline Bench Press\"}]}"
+      ],
+      "tool_calls": [
+        {
+          "tool": "find_exercise_tool",
+          "args": {
+            "query": "bench press"
+          }
+        }
+      ],
+      "offered_ids": [
+        2,
+        31,
+        26,
+        5,
+        39,
+        4,
+        8
+      ]
+    },
+    {
+      "case": "exact name",
+      "message": "What did I lift last time on barbell bench press?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        2
+      ],
+      "output": "final_result_ShowLastSession",
+      "reply": "Last time you did Barbell Bench Press was 5 Oct 2026:\n- Set 1: 30.00 kg x 7\n- Set 2: 30.00 kg x 8\n- Set 3: 30.00 kg x 10",
+      "verified": true,
+      "seconds": 4.32,
+      "input_tokens": 3590,
+      "output_tokens": 274,
+      "errors": [],
+      "contexts": [
+        "{\"status\": \"ok\", \"matches\": [{\"exercise_id\": 2, \"name\": \"Barbell Bench Press\"}]}",
+        "{\"status\": \"ok\", \"exercise_id\": 2, \"exercise_name\": \"Barbell Bench Press\", \"performed_on\": \"2026-10-05\", \"exercise_log_id\": 1295, \"sets\": [{\"set_number\": 1, \"weight_kg\": \"30.00\", \"reps\": 7}, {\"set_number\": 2, \"weight_kg\": \"30.00\", \"reps\": 8}, {\"set_number\": 3, \"weight_kg\": \"30.00\", \"reps\": 10}]}"
+      ],
+      "tool_calls": [
+        {
+          "tool": "find_exercise_tool",
+          "args": {
+            "query": "barbell bench press"
+          }
+        },
+        {
+          "tool": "get_last_session_tool",
+          "args": {
+            "exercise_id": 2
+          }
+        }
+      ],
+      "offered_ids": []
+    }
+  ]
+}
