@@ -9,6 +9,9 @@ dependencies = [
     "chainlit>=2.12.0",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
+    "langfuse>=5.0.2",
+    # Exact pin: harness 0.54.0 requires exactly pydantic-ai-slim 2.54.0 (docs/amendments.md §24)
+    "pydantic-ai-harness==0.54.0",
     "pydantic-ai-slim[openrouter,typesafe]>=2.54.0",
     "pydantic-settings>=2.15.0",
     "qdrant-client>=1.19.1",
@@ -27,7 +30,13 @@ packages = ["src/workout_agent"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["llm: tests that call a real language model (need an API key)"]
+addopts = "--strict-markers"
+# A hung test (a real model call, a service that is down) fails after 60 s instead of stalling.
+timeout = 60
+markers = [
+    "llm: tests that call a real language model (need an API key)",
+    "search_eval: search quality gate on your real data and Qdrant index",
+]
 
 [tool.ruff]
 line-length = 100
@@ -42,5 +51,16 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-httpx>=0.36.2",
+    "pytest-timeout>=2.4.0",
     "ruff>=0.16.10",
 ]
+# Offline evals only: the app never imports it (docs/amendments.md §24)
+eval = [
+    "ragas==0.4.3",
+    "pillow>=10.4.0",
+]
+
+[tool.uv]
+# instructor (via ragas) caps jiter below what openai>=3.19 (pydantic-ai-slim 2.54.0) needs
+override-dependencies = ["jiter>=0.16"]
+constraint-dependencies = ["websockets>=17.2"]

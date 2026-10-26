@@ -1,6 +1,6 @@
 """Score find_exercise on evals/search_cases.toml and save the results.
 
-Usage: uv run python scripts/eval_search.py --label baseline-name-only [--compare FILE]
+Usage: uv run python scripts/eval_search.py --label NAME [--compare FILE] [--model MODEL]
 Needs OPENROUTER_API_KEY in .env, Postgres and Qdrant running, the export imported and
 scripts/index_exercises.py run. Writes evals/results/search-<date>-<label>.json; commit it
 so later changes can be compared with --compare.
@@ -21,10 +21,20 @@ from pathlib import Path
 import asyncpg
 from qdrant_client import AsyncQdrantClient
 
+from workout_agent.db.migrate import apply_migrations
+from workout_agent.embeddings.cache import cached
 from workout_agent.embeddings.index import COLLECTION
-from workout_agent.embeddings.openrouter import MODEL_NAME, embed
+from workout_agent.embeddings.openrouter import MODEL_NAME, collection_for, embed
 from workout_agent.embeddings.search import MIN_SCORE, search_exercises
-from workout_agent.evals.search import CaseResult, Tally, compare, load_cases, run_cases, summarize
+from workout_agent.evals.search import (
+    CaseResult,
+    Tally,
+    compare,
+    load_cases,
+    meaning_only,
+    run_cases,
+    summarize,
+)
 from workout_agent.settings import Settings
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,18 +74,22 @@ def _print_failures(results: list[CaseResult], names: dict[int, str]) -> None:
         wanted = ", ".join(names[i] for i in r.expected[:3]) or "nothing"
         top = r.raw[0] if r.raw else None
         top_text = f"{top.score:.3f} {top.name}" if top else "-"
-        print(f"  [{r.kind}] {r.phrase!r}: {r.step}/{r.status} -> {shown}")
+        tag = r.kind if r.split == "dev" else f"{r.kind}, holdout"
+        print(f"  [{tag}] {r.phrase!r}: {r.step}/{r.status} -> {shown}")
         print(f"      wanted {wanted}; top raw {top_text}; best right {r.best_right_score}")
 
 
-async def main(label: str, compare_with: Path | None) -> int:
+async def main(label: str, compare_with: Path | None, model: str) -> int:
     settings = Settings()
+    collection = collection_for(model, COLLECTION)
     cases = load_cases(CASES)
 
-    async def embedder(texts: list[str]) -> list[list[float]]:
-        return await embed(settings, texts)
+    async def fetch(texts: list[str]) -> list[list[float]]:
+        return await embed(settings, texts, model)
 
     conn = await asyncpg.connect(settings.database_url)
+    await apply_migrations(conn)
+    embedder = cached(conn, model, fetch)
     qdrant = AsyncQdrantClient(url=settings.qdrant_url)
     try:
         names = {
@@ -86,12 +100,14 @@ async def main(label: str, compare_with: Path | None) -> int:
         if unknown:
             print(f"expected ids not in the exercises table: {unknown}")
             return 1
-        if not await qdrant.collection_exists(COLLECTION):
-            print("Qdrant has no exercises collection: run scripts/index_exercises.py")
+        if not await qdrant.collection_exists(collection):
+            print(f"Qdrant has no {collection} collection: run scripts/index_exercises.py")
             return 1
-        points = (await qdrant.count(COLLECTION, exact=True)).count
+        points = (await qdrant.count(collection, exact=True)).count
 
-        search = partial(search_exercises, qdrant, embedder, limit=RAW_LIMIT)
+        search = partial(
+            search_exercises, qdrant, embedder, limit=RAW_LIMIT, collection=collection
+        )
         results = await run_cases(conn, cases, search)
     finally:
         await conn.close()
@@ -99,6 +115,13 @@ async def main(label: str, compare_with: Path | None) -> int:
 
     summary = summarize(results)
     _print_summary(summary)
+    meaning = {split: meaning_only(results, split) for split in ("dev", "holdout")}
+    print("\nQdrant alone (raw top hits, text stages ignored):")
+    for split, m in meaning.items():
+        print(
+            f"  {split:<8} hit@1 {_pct(m.hit_at_1, m.cases)}  hit@3 {_pct(m.hit_at_3, m.cases)}"
+            f"  noise max {m.noise_max:.3f}  lowest right {m.right_min}"
+        )
     _print_failures(results, names)
 
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -108,7 +131,7 @@ async def main(label: str, compare_with: Path | None) -> int:
         "label": label,
         "date": date.today().isoformat(),
         "settings": {
-            "embedding_model": MODEL_NAME,
+            "embedding_model": model,
             "min_score": MIN_SCORE,
             "qdrant_points": points,
             "db_exercises": len(names),
@@ -116,6 +139,7 @@ async def main(label: str, compare_with: Path | None) -> int:
             "cases_sha256": hashlib.sha256(CASES.read_bytes()).hexdigest(),
         },
         "summary": {kind: asdict(t) for kind, t in summary.items()},
+        "meaning_only": {split: asdict(m) for split, m in meaning.items()},
         "cases": [asdict(r) for r in results],
     }
     out.write_text(json.dumps(record, indent=2) + "\n")
@@ -142,5 +166,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Score find_exercise on the labelled phrases.")
     parser.add_argument("--label", required=True, help="short name for this run")
     parser.add_argument("--compare", type=Path, help="an earlier results file")
+    parser.add_argument("--model", default=MODEL_NAME, help="embedding model to evaluate")
     args = parser.parse_args()
-    sys.exit(asyncio.run(main(args.label, args.compare)))
+    sys.exit(asyncio.run(main(args.label, args.compare, args.model)))

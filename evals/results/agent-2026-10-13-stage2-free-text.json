@@ -1,0 +1,445 @@
+{
+  "summary": {
+    "turns": 20,
+    "kind_accuracy": 0.85,
+    "trajectory_accuracy": 0.9,
+    "all_checks_pass": 0.85,
+    "verified": 1.0,
+    "p50_seconds": 2.39,
+    "max_seconds": 4.0,
+    "mean_tokens_per_turn": 1758.35,
+    "max_tokens_per_turn": 2460
+  },
+  "turns": [
+    {
+      "case": "exact name",
+      "message": "What did I lift last time on barbell bench press?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        2
+      ],
+      "output": null,
+      "reply": "On October 5, 2026, you lifted 30.00 kg for 7, 8, and 10 reps on the Barbell Bench Press.",
+      "verified": true,
+      "seconds": 3.74,
+      "input_tokens": 2182,
+      "output_tokens": 241,
+      "errors": []
+    },
+    {
+      "case": "several matches",
+      "message": "What did I lift last time on bench press?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nDid you mean one of the following?\n\n1. Barbell Bench Press\n2. Dumbbell Incline Bench Press\n3. Dumbbell Bench Press\n4. Barbell Decline Bench Press\n5. Dumbbell Decline Bench Press\n6. Barbell Close Grip Bench Press\n7. Barbell Incline Bench Press",
+      "verified": true,
+      "seconds": 2.13,
+      "input_tokens": 1413,
+      "output_tokens": 155,
+      "errors": []
+    },
+    {
+      "case": "name with brackets",
+      "message": "last time I did hack squat reverse position?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        1199
+      ],
+      "output": null,
+      "reply": "Your last Hack Squat (Reverse Position) session was on 2026-10-03. You performed 3 sets of 70 kg for 10, 11, and 12 reps.",
+      "verified": true,
+      "seconds": 4.0,
+      "input_tokens": 2195,
+      "output_tokens": 253,
+      "errors": []
+    },
+    {
+      "case": "incline dumbbell",
+      "message": "last dumbbell incline bench press session?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        31
+      ],
+      "output": null,
+      "reply": "The last Dumbbell Incline Bench Press session was on 2026-09-07. It included two sets: 7.50 kg for 8 reps and 7.50 kg for 10 reps.",
+      "verified": true,
+      "seconds": 3.27,
+      "input_tokens": 2170,
+      "output_tokens": 231,
+      "errors": []
+    },
+    {
+      "case": "misspelt, one option",
+      "message": "last time I did dumbell incline bench pres?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nDid you mean \"Dumbbell Incline Bench Press\"?",
+      "verified": true,
+      "seconds": 2.01,
+      "input_tokens": 1336,
+      "output_tokens": 123,
+      "errors": []
+    },
+    {
+      "case": "unknown",
+      "message": "last time I did zzz?",
+      "expected_kind": "not_found",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "not_found",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\n\"zzz\" is not in the data.",
+      "verified": true,
+      "seconds": 1.59,
+      "input_tokens": 1308,
+      "output_tokens": 76,
+      "errors": []
+    },
+    {
+      "case": "no set details",
+      "message": "when did I last go walking?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        322
+      ],
+      "output": null,
+      "reply": "You last went walking on September 25, 2026.",
+      "verified": true,
+      "seconds": 3.17,
+      "input_tokens": 2099,
+      "output_tokens": 196,
+      "errors": []
+    },
+    {
+      "case": "same name twice",
+      "message": "last time I did ab rollout?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nI found two matches for \"ab rollout\":\n\n1. Barbell Ab Rollout (exercise_id: 66)\n2. Barbell Ab Rollout (exercise_id: 294)\n\nWhich one did you mean? Please reply with the number (1 or 2).",
+      "verified": true,
+      "seconds": 2.35,
+      "input_tokens": 1336,
+      "output_tokens": 128,
+      "errors": []
+    },
+    {
+      "case": "barbell curl",
+      "message": "When did I last do barbell curls?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        112
+      ],
+      "output": null,
+      "reply": "You last did barbell curls on 2023-02-03.",
+      "verified": true,
+      "seconds": 3.21,
+      "input_tokens": 2198,
+      "output_tokens": 184,
+      "errors": []
+    },
+    {
+      "case": "lat pulldown",
+      "message": "what did I do on lat pulldown last time?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nDid you mean:\n1. Wide Grip Lat Pulldown\n2. Iso Lateral Wide Pulldown\n3. Cable Grip Lat Pulldown (Narrow Grip)",
+      "verified": true,
+      "seconds": 2.02,
+      "input_tokens": 1374,
+      "output_tokens": 121,
+      "errors": []
+    },
+    {
+      "case": "plank",
+      "message": "last plank?",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        631
+      ],
+      "output": null,
+      "reply": "The last plank was performed on 2026-10-05. No sets (weights/reps) were recorded for this exercise.",
+      "verified": true,
+      "seconds": 3.6,
+      "input_tokens": 2092,
+      "output_tokens": 261,
+      "errors": []
+    },
+    {
+      "case": "a day, not an exercise",
+      "message": "what did I do on push day?",
+      "expected_kind": "not_found",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nI found a few exercises with \"push\" in the name:\n\n1. Push Up\n2. Modified Push-Up to Forearms\n3. Bench Push-Up\n\nDid you mean one of these? Please let me know which one you'd like to check.",
+      "verified": true,
+      "seconds": 3.16,
+      "input_tokens": 1350,
+      "output_tokens": 325,
+      "errors": [
+        "kind ask_which != not_found"
+      ]
+    },
+    {
+      "case": "out of scope",
+      "message": "what's the weather tomorrow?",
+      "expected_kind": "help",
+      "expected_tools": [],
+      "kind": "help",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "I don't have access to weather information. I can only help with questions about your workout log, like finding exercises or checking your recent workout sessions. Is there something workout-related I can help you with?",
+      "verified": true,
+      "seconds": 1.59,
+      "input_tokens": 626,
+      "output_tokens": 141,
+      "errors": []
+    },
+    {
+      "case": "greeting",
+      "message": "hi",
+      "expected_kind": "help",
+      "expected_tools": [],
+      "kind": "help",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "Hello! I can help you with your workout log. Just let me know which exercise you'd like to check, and I can look up your most recent session details for it.",
+      "verified": true,
+      "seconds": 1.1,
+      "input_tokens": 621,
+      "output_tokens": 88,
+      "errors": []
+    },
+    {
+      "case": "pick by number",
+      "message": "What did I lift last time on bench press?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nDid you mean one of the following?\n\n1. Barbell Bench Press\n2. Dumbbell Incline Bench Press\n3. Dumbbell Bench Press\n4. Barbell Decline Bench Press\n5. Dumbbell Decline Bench Press\n6. Barbell Close Grip Bench Press\n7. Barbell Incline Bench Press",
+      "verified": true,
+      "seconds": 2.43,
+      "input_tokens": 1413,
+      "output_tokens": 155,
+      "errors": []
+    },
+    {
+      "case": "pick by number",
+      "message": "1",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        2
+      ],
+      "output": null,
+      "reply": "\n\nOn October 5, 2026, you lifted 30 kg for 7, 8, and 10 reps on the Barbell Bench Press.",
+      "verified": true,
+      "seconds": 1.86,
+      "input_tokens": 1872,
+      "output_tokens": 112,
+      "errors": []
+    },
+    {
+      "case": "pick deadlift",
+      "message": "last deadlift session?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "ask_which",
+      "tools": [
+        "find_exercise_tool"
+      ],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "\n\nDid you mean:\n1. Barbell Deadlift\n2. Barbell Romanian Deadlift\n3. Dumbbell Romanian Deadlift\n4. Smith Machine Deadlift",
+      "verified": true,
+      "seconds": 2.74,
+      "input_tokens": 1362,
+      "output_tokens": 122,
+      "errors": []
+    },
+    {
+      "case": "pick deadlift",
+      "message": "2",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        199
+      ],
+      "output": null,
+      "reply": "\n\nThe last Barbell Romanian Deadlift session was on 2026-10-03. You performed 3 sets of 10 reps at 35.00 kg each.",
+      "verified": true,
+      "seconds": 2.18,
+      "input_tokens": 1717,
+      "output_tokens": 122,
+      "errors": []
+    },
+    {
+      "case": "say yes",
+      "message": "last time I did dumbell incline bench pres?",
+      "expected_kind": "ask_which",
+      "expected_tools": [
+        "find_exercise_tool"
+      ],
+      "kind": "show_last",
+      "tools": [
+        "find_exercise_tool",
+        "get_last_session_tool"
+      ],
+      "fetched_ids": [
+        31
+      ],
+      "output": null,
+      "reply": "Your last Dumbbell Incline Bench Press was on 2026-09-07:\n- Set 1: 7.50 kg, 8 reps\n- Set 2: 7.50 kg, 10 reps",
+      "verified": true,
+      "seconds": 3.66,
+      "input_tokens": 2176,
+      "output_tokens": 284,
+      "errors": [
+        "kind show_last != ask_which",
+        "tools ['find_exercise_tool', 'get_last_session_tool'] != ['find_exercise_tool']"
+      ]
+    },
+    {
+      "case": "say yes",
+      "message": "yes",
+      "expected_kind": "show_last",
+      "expected_tools": [
+        "get_last_session_tool"
+      ],
+      "kind": "help",
+      "tools": [],
+      "fetched_ids": [],
+      "output": null,
+      "reply": "Great! Your last Dumbbell Incline Bench Press session was on September 7, 2026, with two sets of 7.50 kg (8 and 10 reps).",
+      "verified": true,
+      "seconds": 1.32,
+      "input_tokens": 899,
+      "output_tokens": 110,
+      "errors": [
+        "kind help != show_last",
+        "tools [] != ['get_last_session_tool']",
+        "fetched [] != [31]"
+      ]
+    }
+  ]
+}

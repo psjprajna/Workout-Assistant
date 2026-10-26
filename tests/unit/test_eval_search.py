@@ -27,49 +27,49 @@ def _case(expected=(2,), kind="slang_synonym"):
 
 
 def test_text_match_on_the_right_exercise_passes():
-    result = score_case(_case(), _found("ok", 2), searched=False, raw=[])
+    result = score_case(_case(), _found("ok", 2), step="text", raw=[])
     assert result.step == "text"
     assert result.hit_at_1 and result.hit_at_3 and result.passed
     assert not result.wrong_ok
 
 
 def test_meaning_hit_in_second_place_is_hit_at_3_only():
-    result = score_case(_case(), _found("ambiguous", 5, 2, 9), searched=True, raw=[])
+    result = score_case(_case(), _found("ambiguous", 5, 2, 9), step="meaning", raw=[])
     assert result.step == "meaning"
     assert not result.hit_at_1
     assert result.hit_at_3 and result.passed
 
 
 def test_right_answer_in_fourth_place_fails():
-    result = score_case(_case(), _found("ambiguous", 5, 6, 7, 2), searched=False, raw=[])
+    result = score_case(_case(), _found("ambiguous", 5, 6, 7, 2), step="text", raw=[])
     assert not result.hit_at_3 and not result.passed
 
 
 def test_ok_on_the_wrong_exercise_is_wrong_ok():
-    result = score_case(_case(), _found("ok", 9), searched=False, raw=[])
+    result = score_case(_case(), _found("ok", 9), step="text", raw=[])
     assert result.wrong_ok and not result.passed
 
 
 def test_nothing_found_is_step_none():
-    result = score_case(_case(), _found("no_rows"), searched=True, raw=[])
+    result = score_case(_case(), _found("no_rows"), step="none", raw=[])
     assert result.step == "none" and not result.passed
 
 
 def test_noise_with_no_offer_passes():
     case = _case(expected=(), kind="noise")
-    result = score_case(case, _found("no_rows"), searched=True, raw=_raw((7, 0.28)))
+    result = score_case(case, _found("no_rows"), step="none", raw=_raw((7, 0.28)))
     assert result.passed and not result.false_offer
 
 
 def test_noise_with_an_offer_is_a_false_offer():
     case = _case(expected=(), kind="noise")
-    result = score_case(case, _found("ambiguous", 7), searched=True, raw=_raw((7, 0.44)))
+    result = score_case(case, _found("ambiguous", 7), step="meaning", raw=_raw((7, 0.44)))
     assert result.false_offer and not result.passed
 
 
 def test_best_right_and_wrong_scores_come_from_raw_hits():
     raw = _raw((9, 0.556), (2, 0.555), (4, 0.30))
-    result = score_case(_case(expected=(2, 4)), _found("no_rows"), searched=True, raw=raw)
+    result = score_case(_case(expected=(2, 4)), _found("no_rows"), step="none", raw=raw)
     assert result.best_right_score == 0.555
     assert result.best_wrong_score == 0.556
     assert [h.exercise_id for h in result.raw] == [9, 2, 4]
@@ -77,18 +77,30 @@ def test_best_right_and_wrong_scores_come_from_raw_hits():
 
 def test_summarize_counts_overall_and_per_kind():
     results: list[CaseResult] = [
-        score_case(_case(), _found("ok", 2), searched=False, raw=[]),
-        score_case(_case(), _found("ok", 9), searched=False, raw=[]),
-        score_case(_case((), "noise"), _found("ambiguous", 7), searched=True, raw=[]),
+        score_case(_case(), _found("ok", 2), step="text", raw=[]),
+        score_case(_case(), _found("ok", 9), step="text", raw=[]),
+        score_case(_case((), "noise"), _found("ambiguous", 7), step="meaning", raw=[]),
     ]
     summary = summarize(results)
-    assert list(summary) == ["all", "slang_synonym", "noise"]
+    assert list(summary) == ["all", "dev", "slang_synonym", "noise"]
     assert summary["all"].cases == 3
     assert summary["all"].passed == 1
     assert summary["all"].wrong_ok == 1
     assert summary["slang_synonym"].hit_at_1 == 1
     assert summary["noise"].false_offers == 1
     assert summary["all"].steps == {"text": 2, "meaning": 1}
+
+
+def test_summarize_counts_holdout_separately():
+    holdout = Case(phrase="sldl", kind="abbreviation", expected=(199,), split="holdout")
+    results = [
+        score_case(_case(), _found("ok", 2), step="text", raw=[]),
+        score_case(holdout, _found("ok", 199), step="text", raw=[]),
+    ]
+    summary = summarize(results)
+    assert summary["dev"].cases == 1
+    assert summary["holdout"].cases == 1
+    assert summary["holdout"].passed == 1
 
 
 def test_compare_finds_fixed_and_broken_phrases():
@@ -118,6 +130,7 @@ def test_parse_cases_reads_a_valid_case():
         _toml(kind="noise"),
         _toml(extra=1),
         {"case": _toml()["case"] * 2},
+        _toml(split="test"),
     ],
     ids=[
         "unknown top key",
@@ -129,6 +142,7 @@ def test_parse_cases_reads_a_valid_case():
         "noise with expected ids",
         "unknown case key",
         "duplicate phrase",
+        "unknown split",
     ],
 )
 def test_parse_cases_rejects_bad_input(data):

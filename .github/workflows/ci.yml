@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      # Same images and host port as docker-compose.yml; the tests read DATABASE_URL defaults.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: workout
+          POSTGRES_PASSWORD: workout
+          POSTGRES_DB: workout
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U workout"
+          --health-interval 5s
+          --health-retries 10
+      qdrant:
+        image: qdrant/qdrant
+        ports:
+          - 6333:6333
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked --group eval
+      - run: uv run ruff check
+      - run: uv run pyright
+      # No real model calls and no tests that need the user's own data (docs/amendments.md §9).
+      - run: uv run pytest -m "not llm and not search_eval"

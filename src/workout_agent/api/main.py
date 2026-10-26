@@ -2,15 +2,18 @@
 
 Builds the app with the rule-based router, the agent, and the database and Qdrant URLs
 from Settings. The agent's find_exercise falls back to search by meaning via OpenRouter.
+Langfuse tracing is on when its keys are set.
 """
 
 from workout_agent.agents.workout_agent import build_agent
 from workout_agent.api.app import create_app
 from workout_agent.embeddings.openrouter import embed
+from workout_agent.observability import setup_tracing
 from workout_agent.settings import Settings
 from workout_agent.workflow.simple_router import simple_route
 
 settings = Settings()
+setup_tracing(settings)  # traces to Langfuse when its keys are in .env
 
 
 async def embedder(texts: list[str]) -> list[list[float]]:
@@ -23,4 +26,6 @@ app = create_app(
     agent=build_agent(settings),
     qdrant_url=settings.qdrant_url,
     embedder=embedder,
+    history_turns=settings.history_turns,
+    history_full_tool_turns=settings.history_full_tool_turns,
 )

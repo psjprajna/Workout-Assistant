@@ -143,3 +143,117 @@ async def test_blank_query_never_searches(conn):
 
     assert result.status == "no_rows"
     assert calls == []
+
+
+# --- staged search: whole words, shorthand, muscle words, spelling, not-an-exercise ---
+
+
+async def _seed_more(conn):
+    await conn.executemany(
+        "insert into exercises (exercise_id, name) values ($1, $2)",
+        [
+            (3, "Barbell Bent-Over Row"),
+            (88, "Dumbbell Bent-Over Row"),
+            (12, "Barbell Squat"),
+            (47, "Push Up"),
+            (52, "T Bar Row"),
+            (627, "Modified Push-Up to Forearms"),
+            (119, "Barbell Palms Up Wrist Curl"),
+            (32, "Dumbbell Lateral Raise"),
+            (86, "Wide Grip Lat Pulldown"),
+        ],
+    )
+
+
+async def test_letters_inside_a_word_do_not_match(conn):
+    await _seed_more(conn)
+    # "bb" is shorthand for barbell, and never matches the "bb" inside "Dumbbell".
+    result = await find_exercise(conn, "bb row")
+    assert result.status == "ok"
+    assert [m.exercise_id for m in result.matches] == [3]
+
+
+async def test_db_means_dumbbell(conn):
+    await _seed_more(conn)
+    result = await find_exercise(conn, "db row")
+    assert [m.exercise_id for m in result.matches] == [88]
+
+
+async def test_plural_and_hyphen_still_match_whole_words(conn):
+    await _seed_more(conn)
+    assert [m.exercise_id for m in (await find_exercise(conn, "squats")).matches] == [12]
+    # "push ups" is the name "Push Up" in the plural: exact, so no question.
+    push_ups = await find_exercise(conn, "push ups")
+    assert (push_ups.status, [m.exercise_id for m in push_ups.matches]) == ("ok", [47])
+    assert [m.exercise_id for m in (await find_exercise(conn, "t-bar row")).matches] == [52]
+
+
+async def test_lat_does_not_match_lateral(conn):
+    await _seed_more(conn)
+    result = await find_exercise(conn, "lat pulldown")
+    assert [m.exercise_id for m in result.matches] == [86]
+
+
+async def test_a_muscle_word_inside_a_name_is_asked_not_assumed(conn):
+    await _seed_more(conn)
+    search, _ = fake_search([ScoredExercise(119, "Barbell Palms Up Wrist Curl", ABOVE)])
+
+    result = await find_exercise(conn, "forearms", search)
+
+    assert result.status == "ambiguous"
+    assert [m.exercise_id for m in result.matches] == [627, 119]
+
+
+async def test_misspelt_word_is_fixed_and_offered(conn):
+    await _seed_more(conn)
+    result = await find_exercise(conn, "dumbell rows")
+    assert result.status == "ambiguous"
+    assert [m.exercise_id for m in result.matches] == [88]
+
+
+async def test_a_day_or_workout_is_not_an_exercise(conn):
+    await _seed_more(conn)
+    search, calls = fake_search([ScoredExercise(47, "Push Up", ABOVE)])
+
+    result = await find_exercise(conn, "push day", search)
+
+    assert result.status == "no_rows"
+    assert calls == []
+
+
+async def test_regex_characters_in_the_query_are_plain_text(conn):
+    await _seed_more(conn)
+    result = await find_exercise(conn, "row (.*")
+    assert result.status == "no_rows"
+
+
+async def _seed_catalog(conn):
+    await _seed_more(conn)
+    await conn.executemany(
+        "insert into exercise_aliases (exercise_id, alias, source) values ($1, $2, 'catalog')",
+        [(86, "lat pulldown"), (3, "bent over row")],
+    )
+    await conn.executemany(
+        "insert into exercise_muscles (exercise_id, muscle, position) values ($1, $2, $3)",
+        [(86, "lats", 0), (3, "upper back", 0), (3, "lats", 1), (119, "forearms", 0)],
+    )
+
+
+async def test_other_names_match_like_names(conn):
+    await _seed_catalog(conn)
+    result = await find_exercise(conn, "lat pulldowns")
+    assert (result.status, [m.exercise_id for m in result.matches]) == ("ok", [86])
+
+
+async def test_muscle_phrase_offers_exercises_tagged_with_it_main_muscle_first(conn):
+    await _seed_catalog(conn)
+    # "back" covers back muscles and lats; Barbell Row works the upper back most.
+    result = await find_exercise(conn, "something for my back")
+    assert result.status == "ambiguous"
+    assert [m.exercise_id for m in result.matches] == [3, 86]
+
+
+async def test_muscle_tags_come_before_a_name_that_only_mentions_the_muscle(conn):
+    await _seed_catalog(conn)
+    result = await find_exercise(conn, "forearms")
+    assert [m.exercise_id for m in result.matches] == [119, 627]

@@ -5,16 +5,64 @@ seeded - conn plus two bench presses with one set each.
 This keeps tests away from your real workout data.
 """
 
+import socket
+import subprocess
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
+from urllib.parse import urlparse
 
 import asyncpg
+import httpx
 import pytest
+from pydantic_ai.exceptions import ModelHTTPError
 
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.settings import Settings
 
 TEST_DB = "workout_test"
+
+# OpenRouter answers that mean "your account can't run this", not "the code is wrong".
+_OPENROUTER_SKIPS = {
+    402: "OpenRouter account is out of credits (HTTP 402)",
+    404: "no OpenRouter provider matches the model and data policy (HTTP 404)",
+}
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item):
+    """Skip, not fail, an `llm` test when OpenRouter refuses for account reasons."""
+    try:
+        return (yield)
+    except (ModelHTTPError, httpx.HTTPStatusError) as error:
+        status = (
+            error.status_code
+            if isinstance(error, ModelHTTPError)
+            else error.response.status_code
+        )
+        if item.get_closest_marker("llm") and status in _OPENROUTER_SKIPS:
+            pytest.skip(_OPENROUTER_SKIPS[status])
+        raise
+
+
+def _postgres_is_up() -> bool:
+    url = urlparse(Settings().database_url)
+    try:
+        with socket.create_connection((url.hostname or "localhost", url.port or 5432), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def services_are_up():
+    """Open Docker and start Postgres and Qdrant when Postgres isn't answering."""
+    if _postgres_is_up():
+        return
+    script = Path(__file__).parents[2] / "scripts" / "ensure_docker.sh"
+    started = subprocess.run([script], capture_output=True, text=True)
+    if started.returncode != 0 or not _postgres_is_up():
+        pytest.exit(f"Postgres is down and {script.name} could not start it:\n{started.stderr}", 1)
 
 
 def _with_database(url: str, name: str) -> str:
@@ -45,7 +93,10 @@ async def conn():
     connection = await asyncpg.connect(_with_database(base_url, TEST_DB))
     try:
         await apply_migrations(connection)
-        await connection.execute("truncate sets, exercise_logs, exercises cascade")
+        await connection.execute(
+            "truncate chat_turns, chats, daily_checks, sets, exercise_logs, exercises, routines "
+            "cascade"
+        )
         yield connection
     finally:
         await connection.close()
@@ -70,4 +121,14 @@ async def seeded(conn):
             (10, 1, Decimal("80.00"), Decimal("80.00"), 8),
             (11, 1, Decimal("60.00"), Decimal("60.00"), 10),
         ],
+    )
+
+@pytest.fixture
+async def checked_today(conn):
+    """Today's latest_record check already stored, so a chat's events show only its own tools."""
+    await conn.execute(
+        "insert into daily_checks (check_name, checked_on, result) values ($1, $2, $3)",
+        "latest_record",
+        date.today(),
+        '{"status": "no_rows", "latest_on": null}',
     )

@@ -16,9 +16,20 @@ class Settings(BaseSettings):
     # Where the chat page finds the API (uvicorn's default port).
     api_url: str = "http://localhost:8000"
 
+    # How much chat history the agent sees: the last history_turns turns, with full tool
+    # results only in the newest history_full_tool_turns. Starting values; tune them from
+    # Langfuse token counts (docs/amendments.md §9).
+    history_turns: int = 10
+    history_full_tool_turns: int = 2
+
     # Optional API keys hidden from logs/repr
     openrouter_api_key: SecretStr | None = None
     typesafe_api_key: SecretStr | None = None
+
+    # Langfuse tracing (docker-compose.yml). Off unless both keys are set.
+    langfuse_public_key: SecretStr | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_host: str = "http://localhost:3000"
 
     # Configuration to read from .env file
     model_config = SettingsConfigDict(

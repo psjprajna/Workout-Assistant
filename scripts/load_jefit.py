@@ -2,7 +2,8 @@
 
 Usage: uv run python scripts/load_jefit.py data/<your-file>.csv
 Reads the file, parses exercise logs, builds a LoadPlan, applies migrations, inserts
-the plan, and prints counts so you can check the database matches the plan.
+the plan, and prints counts so you can check the database matches the plan. Then reads
+the weekly routine (days, planned exercises, target reps) and replaces the stored one.
 """
 
 import asyncio
@@ -15,6 +16,7 @@ import asyncpg
 from workout_agent.db.migrate import apply_migrations
 from workout_agent.importing.loader import build_plan, load_plan
 from workout_agent.importing.parsers import parse_exercise_logs
+from workout_agent.importing.routine import load_routine, parse_routines
 from workout_agent.importing.sections import split_sections
 from workout_agent.importing.timed_exercises import TIMED_EXERCISE_IDS
 from workout_agent.settings import Settings
@@ -33,11 +35,18 @@ async def main(csv_path: str) -> None:
     for error in (parsed.errors + plan.errors)[:20]:
         print("  !", error)
 
+    routine = parse_routines(sections["ROUTINES"])
+    print(f"routine: {len(routine.days)} days, {len(routine.planned)} planned exercises, "
+          f"{len(routine.errors)} bad rows")
+    for error in routine.errors[:20]:
+        print("  !", error)
+
     conn = await asyncpg.connect(Settings().database_url)
     try:
         await apply_migrations(conn)
         await load_plan(conn, plan)
-        for table in ("exercises", "exercise_logs", "sets"):
+        await load_routine(conn, routine)
+        for table in ("exercises", "exercise_logs", "sets", "routine_days", "planned_exercises"):
             count = await conn.fetchval(f"select count(*) from {table}")
             print(f"db {table}: {count}")
     finally:

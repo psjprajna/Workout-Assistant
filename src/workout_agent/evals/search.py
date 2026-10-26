@@ -7,14 +7,24 @@ scripts/eval_search.py runs it against the real database and saves the results.
 
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import asyncpg
 
 from workout_agent.embeddings.search import ScoredExercise
-from workout_agent.tools.find_exercise import FindResult, Searcher, find_exercise
+from workout_agent.tools.find_exercise import (
+    Candidates,
+    FindResult,
+    Query,
+    Searcher,
+    Step,
+    TextHit,
+    Thresholds,
+    decide,
+    gather,
+)
 
 KINDS = (
     "exact_words",  # control: the text match should already find these
@@ -25,7 +35,9 @@ KINDS = (
     "noise",  # nothing should be offered
 )
 
-Step = Literal["text", "meaning", "none"]
+# dev: cases used to tune the catalog and cutoffs. holdout: written before the catalog
+# and never tuned on, so they show whether gains carry over to new phrasings.
+SPLITS = ("dev", "holdout")
 
 
 @dataclass(frozen=True)
@@ -34,6 +46,7 @@ class Case:
     kind: str
     # Exercise ids that count as a right answer. Empty: nothing should be offered.
     expected: tuple[int, ...]
+    split: str = "dev"
 
 
 @dataclass
@@ -53,8 +66,9 @@ class RawHit:
 class CaseResult:
     phrase: str
     kind: str
+    split: str
     expected: list[int]
-    step: Step  # which part of find_exercise produced the options
+    step: Step  # which stage of find_exercise produced the answer
     status: str
     options: list[Option]
     hit_at_1: bool  # a right answer is the first option
@@ -65,6 +79,8 @@ class CaseResult:
     raw: list[RawHit]  # Qdrant's top hits before MIN_SCORE, best first
     best_right_score: float | None
     best_wrong_score: float | None
+    # What every stage found, so scripts/sweep_search.py can replay decide() offline.
+    candidates: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -87,16 +103,19 @@ def parse_cases(data: Mapping[str, Any]) -> list[Case]:
     cases: list[Case] = []
     seen: set[str] = set()
     for number, raw in enumerate(data.get("case", []), start=1):
-        unknown = set(raw) - {"phrase", "kind", "expected"}
+        unknown = set(raw) - {"phrase", "kind", "expected", "split"}
         if unknown:
             raise ValueError(f"case {number}: unknown keys {sorted(unknown)}")
         phrase = raw.get("phrase")
         kind = raw.get("kind")
         expected = raw.get("expected")
+        split = raw.get("split", "dev")
         if not isinstance(phrase, str) or not phrase.strip():
             raise ValueError(f"case {number}: phrase must be a non-empty string")
         if kind not in KINDS:
             raise ValueError(f"case {number} ({phrase!r}): unknown kind {kind!r}")
+        if split not in SPLITS:
+            raise ValueError(f"case {number} ({phrase!r}): unknown split {split!r}")
         if not isinstance(expected, list) or not all(
             isinstance(i, int) and not isinstance(i, bool) for i in expected
         ):
@@ -109,7 +128,7 @@ def parse_cases(data: Mapping[str, Any]) -> list[Case]:
         if key in seen:
             raise ValueError(f"case {number}: duplicate phrase {phrase!r}")
         seen.add(key)
-        cases.append(Case(phrase=phrase, kind=kind, expected=tuple(expected)))
+        cases.append(Case(phrase=phrase, kind=kind, expected=tuple(expected), split=split))
 
     if not cases:
         raise ValueError("no cases")
@@ -122,19 +141,11 @@ def load_cases(path: Path) -> list[Case]:
 
 
 def score_case(
-    case: Case, result: FindResult, searched: bool, raw: list[ScoredExercise]
+    case: Case, result: FindResult, step: Step, raw: list[ScoredExercise]
 ) -> CaseResult:
-    """Score one find_exercise result. `searched`: the meaning fallback was called."""
+    """Score one find_exercise result. `step`: the stage that produced it."""
     expected = set(case.expected)
     ids = [m.exercise_id for m in result.matches]
-
-    step: Step
-    if not ids:
-        step = "none"
-    elif searched:
-        step = "meaning"
-    else:
-        step = "text"
 
     hit_at_1 = any(i in expected for i in ids[:1])
     hit_at_3 = any(i in expected for i in ids[:3])
@@ -145,6 +156,7 @@ def score_case(
     return CaseResult(
         phrase=case.phrase,
         kind=case.kind,
+        split=case.split,
         expected=list(case.expected),
         step=step,
         status=result.status,
@@ -163,31 +175,33 @@ def score_case(
 async def run_cases(
     conn: asyncpg.Connection, cases: list[Case], search: Searcher | None
 ) -> list[CaseResult]:
-    """Run find_exercise on every case.
+    """Run find_exercise's stages on every case, recording every stage's candidates.
 
-    `search` is called once per phrase up front for the raw scores; find_exercise then
-    gets that same answer, so each phrase costs one embedding call.
+    gather(everything=True) runs every stage even when an earlier one answered, so the
+    raw scores are kept; decide() then answers exactly as find_exercise would.
     """
     results = []
     for case in cases:
-        raw = await search(case.phrase) if search is not None else []
-        searched = False
-
-        async def recorded(_query: str, raw: list[ScoredExercise] = raw) -> list[ScoredExercise]:
-            nonlocal searched
-            searched = True
-            return raw
-
-        result = await find_exercise(conn, case.phrase, recorded if search else None)
-        results.append(score_case(case, result, searched, raw))
+        candidates = await gather(conn, case.phrase, search, everything=True)
+        results.append(score_candidates(case, candidates))
     return results
 
 
+def score_candidates(case: Case, candidates: Candidates, **thresholds: Any) -> CaseResult:
+    """decide() on saved candidates, then score; thresholds override the defaults."""
+    decision = decide(candidates, Thresholds(**thresholds))
+    result = score_case(case, decision.result, decision.step, candidates.meaning)
+    result.candidates = asdict(candidates)
+    return result
+
+
 def summarize(results: list[CaseResult]) -> dict[str, Tally]:
-    """Counts overall ("all") and per kind, in KINDS order."""
-    tallies = {"all": Tally()} | {kind: Tally() for kind in KINDS}
+    """Counts overall ("all"), per split, then per kind in KINDS order."""
+    tallies = (
+        {"all": Tally()} | {split: Tally() for split in SPLITS} | {kind: Tally() for kind in KINDS}
+    )
     for r in results:
-        for tally in (tallies["all"], tallies[r.kind]):
+        for tally in (tallies["all"], tallies[r.split], tallies[r.kind]):
             tally.cases += 1
             tally.passed += r.passed
             tally.hit_at_1 += r.hit_at_1
@@ -196,6 +210,52 @@ def summarize(results: list[CaseResult]) -> dict[str, Tally]:
             tally.false_offers += r.false_offer
             tally.steps[r.step] = tally.steps.get(r.step, 0) + 1
     return {kind: tally for kind, tally in tallies.items() if tally.cases}
+
+
+def candidates_from_dict(data: Mapping[str, Any]) -> Candidates:
+    """Rebuild Candidates saved in a results file (CaseResult.candidates)."""
+    return Candidates(
+        query=Query(**data["query"]),
+        text=[TextHit(**h) for h in data["text"]],
+        muscle=[TextHit(**h) for h in data.get("muscle", [])],
+        corrected=list(data.get("corrected", [])),
+        fuzzy=[TextHit(**h) for h in data.get("fuzzy", [])],
+        meaning=[ScoredExercise(**h) for h in data.get("meaning", [])],
+    )
+
+
+def case_from_dict(data: Mapping[str, Any]) -> Case:
+    return Case(data["phrase"], data["kind"], tuple(data["expected"]), data.get("split", "dev"))
+
+
+@dataclass
+class MeaningOnly:
+    """Qdrant alone, ignoring the text stages: is a right answer among its raw top hits?"""
+
+    cases: int = 0  # phrases that expect an exercise
+    hit_at_1: int = 0
+    hit_at_3: int = 0
+    noise_max: float = 0.0  # highest score any noise phrase reached
+    right_min: float | None = None  # lowest best-right score among hit@3 phrases
+
+
+def meaning_only(results: list[CaseResult], split: str | None = None) -> MeaningOnly:
+    """Score the raw meaning hits saved with each result (all splits, or one)."""
+    m = MeaningOnly()
+    for r in results:
+        if split is not None and r.split != split:
+            continue
+        ids = [h.exercise_id for h in r.raw]
+        if not r.expected:
+            m.noise_max = max([m.noise_max, *(h.score for h in r.raw[:1])])
+            continue
+        m.cases += 1
+        m.hit_at_1 += any(i in r.expected for i in ids[:1])
+        hit3 = any(i in r.expected for i in ids[:3])
+        m.hit_at_3 += hit3
+        if hit3 and r.best_right_score is not None:
+            m.right_min = min(r.best_right_score, m.right_min or r.best_right_score)
+    return m
 
 
 def compare(old: Mapping[str, bool], new: Mapping[str, bool]) -> tuple[list[str], list[str]]:

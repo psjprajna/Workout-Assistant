@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from workout_agent.workflow.chat import RouteDecision, Session, handle_message
+from workout_agent.workflow.safety import SAFETY_REPLY
 
 
 def fake_route(decision: RouteDecision):
@@ -42,7 +43,7 @@ async def test_ambiguous_exercise_asks_and_remembers_options(conn):
     route = fake_route(RouteDecision(intent="last_session", exercise_text="bench press"))
     reply = await handle_message(conn, session, "last time I did bench press?", route)
     assert "Which one" in reply
-    assert len(session.pending) == 2
+    assert session.pending is not None and len(session.pending) == 2
 
 
 async def test_picking_an_option_answers_and_clears_pending(conn):
@@ -66,7 +67,7 @@ async def test_option_number_out_of_range_asks_again_and_keeps_pending(conn):
     pick = fake_route(RouteDecision(intent="pick_option", option_number=9))
     reply = await handle_message(conn, session, "9", pick)
     assert "Which one" in reply
-    assert len(session.pending) == 2
+    assert session.pending is not None and len(session.pending) == 2
 
 
 async def test_pick_option_with_nothing_pending_does_not_crash(conn):
@@ -101,3 +102,10 @@ async def test_unknown_intent_states_what_it_can_do(conn):
     route = fake_route(RouteDecision(intent="unknown"))
     reply = await handle_message(conn, session, "what's the weather?", route)
     assert "last session" in reply
+
+async def test_a_safety_message_is_refused_before_the_router(conn):
+    async def route(text: str, has_pending: bool) -> RouteDecision:
+        raise AssertionError("the router must not see a refused message")
+
+    reply = await handle_message(conn, Session(), "my knee hurts, what should I squat?", route)
+    assert reply == SAFETY_REPLY

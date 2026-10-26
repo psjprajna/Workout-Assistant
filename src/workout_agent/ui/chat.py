@@ -1,27 +1,149 @@
 """The chat page: uv run chainlit run src/workout_agent/ui/chat.py --port 8001
 
-Every message goes to the running API's POST /chat (start uvicorn first), so the page,
-the API and the agent are all in the path. Each browser chat uses its own session id.
+Every message goes to the running API's POST /chat/stream (start uvicorn first), so the
+page, the API and the agent are all in the path. Each tool call shows as a step while it
+runs ("Searching your exercises for 'bench press'…"), then the reply arrives whole, with
+a "✓ verified" line when code checked its numbers against the tool results.
+Each chat is a Chainlit thread; its id is the chat id the API saves turns under, so past
+chats show in the sidebar and can be reopened (ui/data_layer.py). There is one user,
+logged in automatically: no login form.
+Chainlit reads CHAINLIT_AUTH_SECRET from .env; create it with `uv run chainlit create-secret`.
 """
 
 import chainlit as cl
 import httpx
+from chainlit.utils import utc_now
+from starlette.datastructures import Headers
 
+from workout_agent.sessions.titles import chat_title
 from workout_agent.settings import Settings
-from workout_agent.ui.client import send_message
+from workout_agent.ui.client import export_wanted, stream_message, upload_export
+from workout_agent.ui.data_layer import USER, ApiDataLayer
+from workout_agent.ui.steps import format_args, format_result
+from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart
+
+UPLOAD, SKIP = "upload", "skip"
+
+
+def _results(n: int) -> str:
+    return f"{n} tool result" + ("" if n == 1 else "s")
+
+
+def _new_client() -> httpx.AsyncClient:
+    # Agent turns with several tool calls can take longer than httpx's 5 s default.
+    return httpx.AsyncClient(base_url=Settings().api_url, timeout=60)
+
+
+# Chainlit creates the data layer once per process.
+_data_layer = ApiDataLayer(_new_client())
+
+
+@cl.data_layer
+def data_layer() -> ApiDataLayer:
+    return _data_layer
+
+
+@cl.header_auth_callback
+async def auth(headers: Headers) -> cl.User:
+    return cl.User(identifier=USER)  # always succeeds, so no login form is shown
+
+
+@cl.set_starters
+async def starters(user: cl.User | None = None) -> list[cl.Starter]:
+    return [
+        cl.Starter(label="Last bench press", message="What did I lift last time on bench press?"),
+        cl.Starter(label="Last barbell curl", message="When did I last do barbell curls?"),
+        cl.Starter(label="Something for back", message="What back exercises have I done?"),
+    ]
 
 
 @cl.on_chat_start
 async def start() -> None:
-    # Agent turns with several tool calls can take longer than httpx's 5 s default.
-    cl.user_session.set("client", httpx.AsyncClient(base_url=Settings().api_url, timeout=60))
+    # No welcome message: a bot message would save an empty chat to the sidebar.
+    cl.user_session.set("client", _new_client())
+
+
+@cl.on_chat_resume
+async def resume(thread: cl.types.ThreadDict) -> None:
+    # Chainlit shows the old messages from the data layer; the API has the model history.
+    cl.user_session.set("client", _new_client())
+
+
+async def ask_for_export(client: httpx.AsyncClient, latest_on: str) -> None:
+    """Offer to import a newer Jefit export: the first message of the day only."""
+    choice = await cl.AskActionMessage(
+        content=f"Your data runs through {latest_on}. Is there a newer Jefit export?",
+        actions=[
+            cl.Action(name=UPLOAD, payload={"value": UPLOAD}, label="Upload the latest export"),
+            cl.Action(name=SKIP, payload={"value": SKIP}, label="Skip, use what I have"),
+        ],
+        timeout=300,
+    ).send()
+    if not choice or choice.get("payload", {}).get("value") != UPLOAD:
+        return
+    files = await cl.AskFileMessage(
+        content="Please upload your Jefit export (the .csv from Jefit's export page).",
+        accept=["text/csv", ".csv"],
+        max_size_mb=20,
+        timeout=600,
+    ).send()
+    if not files:
+        return
+    with open(files[0].path, "rb") as file:
+        content = file.read()
+    await cl.Message(content=await upload_export(client, content)).send()
 
 
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     client: httpx.AsyncClient = cl.user_session.get("client")  # type: ignore[assignment]
-    reply = await send_message(client, cl.context.session.id, message.content)
-    await cl.Message(content=reply).send()
+    if (latest_on := await export_wanted(client)) is not None:
+        await ask_for_export(client, latest_on)
+    # thread_id stays the same when a chat is reopened; session.id changes per connection.
+    thread_id = cl.context.session.thread_id
+    _data_layer.mark_pending(thread_id, chat_title(message.content, [])[0])
+    open_steps: list[tuple[str, str, cl.Step]] = []  # (tool, call id), closed as results arrive
+    # Steps made without `async with` get no parent; nest them in this message's run, as
+    # the reply is, so they show above the reply rather than after it.
+    run = cl.context.current_step
+    reply = ""
+    try:
+        async for event in stream_message(client, thread_id, message.content):
+            if isinstance(event, ToolStart):
+                step = cl.Step(
+                    name=event.label,
+                    type="tool",
+                    show_input="json",
+                    parent_id=run.id if run else None,
+                )
+                step.input = format_args(event.args)
+                step.start = utc_now()  # start without end: the page shows it as running
+                await step.send()
+                open_steps.append((event.tool, event.call_id, step))
+            elif isinstance(event, ToolEnd):
+                # By call id, so two calls to one tool close in the right order.
+                found = next(
+                    (
+                        i
+                        for i, (tool, call_id, _) in enumerate(open_steps)
+                        if tool == event.tool and call_id == event.call_id
+                    ),
+                    None,
+                )
+                if found is not None:
+                    _, _, step = open_steps.pop(found)
+                    step.output = format_result({**event.result, "status": event.status})
+                    step.end = utc_now()
+                    await step.update()
+            elif isinstance(event, Final):
+                reply = event.reply
+                if event.verified and event.checked:
+                    reply += f"\n\n*✓ verified against {_results(event.checked)}*"
+            elif isinstance(event, Error):
+                reply = event.message
+    finally:
+        _data_layer.clear_pending(thread_id)
+    await cl.Message(content=reply or "No answer came back. Please try again.").send()
 
 
 @cl.on_chat_end

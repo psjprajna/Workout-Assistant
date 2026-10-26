@@ -13,15 +13,13 @@ import asyncpg
 from workout_agent.tools.find_exercise import ExerciseMatch, FindResult, find_exercise
 from workout_agent.tools.get_last_session import get_last_session
 from workout_agent.workflow.replies import (
+    HELP_TEXT,
+    UNVERIFIED_REPLY,
     format_find_question,
     format_last_session,
     verify_reply,
 )
-
-HELP_TEXT = (
-    "I can answer questions about your last session of an exercise, "
-    "like 'last time I did bench press?'"
-)
+from workout_agent.workflow.safety import screen
 
 
 @dataclass
@@ -52,7 +50,7 @@ async def _answer(conn: asyncpg.Connection, exercise_id: int) -> str:
 
     # Every number in the reply must come from the tool result. If not, say nothing.
     if not verify_reply(reply, result):
-        return "I couldn't verify that answer, so I won't show it."
+        return UNVERIFIED_REPLY
     return reply
 
 
@@ -62,6 +60,11 @@ async def handle_message(
     text: str,
     route: Route,
 ) -> str:
+    # Step 0: the safety screen, before any router or model.
+    refusal = screen(text)
+    if refusal is not None:
+        return refusal
+
     # Step 1: ask the router what this message means.
     decision = await route(text, session.pending is not None)
 

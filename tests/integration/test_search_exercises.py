@@ -18,6 +18,7 @@ VECTORS = {
     "Barbell Incline Bench Press": [0.8, 0.6, 0.0],
     "Barbell Curl": [0.0, 0.0, 1.0],
     "chest press": [1.0, 0.1, 0.0],
+    "chest press machine": [0.0, 0.0, 1.0],
 }
 
 
@@ -72,3 +73,20 @@ async def test_blank_query_returns_nothing_without_embedding(indexed, qdrant):
         raise AssertionError("the embedder was called for a blank query")
 
     assert await search_exercises(qdrant, must_not_embed, "   ", 3, TEST_COLLECTION) == []
+
+
+async def test_each_exercise_appears_once_scored_by_its_closest_text(indexed, qdrant, conn):
+    # A second text for Barbell Curl, identical to the query: Curl now wins, once.
+    await conn.execute(
+        "insert into exercise_aliases (exercise_id, alias, source) "
+        "values (112, 'chest press machine', 'catalog')"
+    )
+    await index_exercises(conn, qdrant, fake_embedder, TEST_COLLECTION)
+
+    hits = await search_exercises(
+        qdrant, fake_embedder, "chest press machine", 3, TEST_COLLECTION
+    )
+
+    assert hits[0].exercise_id == 112
+    assert hits[0].score == pytest.approx(1.0)
+    assert sorted(h.exercise_id for h in hits) == [2, 8, 112]  # each once
