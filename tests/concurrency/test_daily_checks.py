@@ -9,11 +9,18 @@ from workout_agent.db.migrate import apply_migrations
 from workout_agent.sessions.daily_checks import latest_record_today
 from workout_agent.settings import Settings
 
-TEST_DB = "workout_test"  # the database tests/integration/conftest.py creates
+TEST_DB = "workout_test"  # the database tests/integration/conftest.py also uses
 
 
 async def test_two_first_messages_at_once_leave_one_stored_row():
-    url = Settings().database_url.rsplit("/", 1)[0] + "/" + TEST_DB
+    base_url = Settings().database_url
+    admin = await asyncpg.connect(base_url)
+    try:
+        if not await admin.fetchval("select 1 from pg_database where datname = $1", TEST_DB):
+            await admin.execute(f"create database {TEST_DB}")
+    finally:
+        await admin.close()
+    url = base_url.rsplit("/", 1)[0] + "/" + TEST_DB
     conns = [await asyncpg.connect(url) for _ in range(3)]
     try:
         await apply_migrations(conns[0])
