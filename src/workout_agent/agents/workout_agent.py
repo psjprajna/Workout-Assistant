@@ -37,6 +37,12 @@ from workout_agent.tools.workout_day import workout_days
 
 MODEL_NAME = "qwen/qwen3.5-35b-a3b"
 
+# Most tokens one model call may generate, thinking included. A normal turn is about 70
+# tokens of thinking plus a short tool call. On 2026-10-26 the model sometimes looped in its
+# thinking (after find_exercise returned no_rows for "zzz"): no answer in 300 s, while the
+# same call capped at 512 finished in 7 s three times out of three.
+MAX_OUTPUT_TOKENS = 512
+
 INSTRUCTIONS = (
     "Answer by choosing one final output; code writes the text from the tool results. "
     "When the user names an exercise, call find_exercise with their words. "
@@ -89,6 +95,7 @@ def build_agent(settings: Settings) -> Agent[AgentDeps, AgentOutput]:
     )
     model_settings = OpenRouterModelSettings(
         temperature=0,
+        max_tokens=MAX_OUTPUT_TOKENS,
         # Your workout data goes to the model provider: refuse providers that train on it.
         # Pinned: on 2026-10-22 OpenRouter's default route chose AtlasCloud, which sent two
         # tool calls at once (both used the one database connection and failed); Parasail
