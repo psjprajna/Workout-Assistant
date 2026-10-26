@@ -313,7 +313,7 @@ async def test_a_model_that_keeps_citing_unfetched_ids_saves_nothing(conn, seede
 
 
 class AskThenPick:
-    """Turn 1: find_exercise -> AskWhich with its ids. Turn 2 ("2"): the 2nd id I offered."""
+    """Turn 1: find_exercise -> AskWhich with its ids. A bare number never reaches it."""
 
     def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         returns = [p for p in messages[-1].parts if isinstance(p, ToolReturnPart)]
@@ -324,14 +324,7 @@ class AskThenPick:
             exercise_id = cast(dict[str, Any], returns[0].content)["exercise_id"]
             return choose("ShowLastSession", exercise_id=exercise_id)
         user_text = str(messages[-1].parts[-1].content)  # pyright: ignore[reportAttributeAccessIssue]
-        if user_text.isdigit():
-            asked = [
-                p.args_as_dict()["option_ids"]
-                for m in messages if isinstance(m, ModelResponse)
-                for p in m.parts
-                if isinstance(p, ToolCallPart) and p.tool_name == "final_result_AskWhich"
-            ][-1]
-            return call("get_last_session_tool", exercise_id=asked[int(user_text) - 1])
+        assert not user_text.isdigit(), "a bare number is resolved in code, not by the model"
         return call("find_exercise_tool", query="bench press")
 
 
@@ -344,6 +337,19 @@ async def test_ask_which_then_a_number_shows_that_option(conn, seeded):
     second = question.splitlines()[-1].removeprefix("2. ")
     assert answer.startswith(f"Last time you did {second} was")
     assert await _turns(conn) == 2
+
+
+async def test_a_picked_number_is_kept_in_history_for_the_next_turn(conn, seeded):
+    with AGENT.override(model=FunctionModel(AskThenPick())):
+        await handle_agent_message(conn, "t1", "last bench press?", AGENT)
+        await handle_agent_message(conn, "t1", "2", AGENT)
+        history, last_turn = await chat_store.load_history(conn, "t1", 10)
+
+    assert last_turn == 2
+    assert [r.tool_name for r in _tool_returns(history)][-2:] == [
+        "get_last_session_tool",
+        "final_result_ShowLastSession",
+    ]
 
 
 # --- Guardrails: the safety screen, tool calls and tool results ----------------------

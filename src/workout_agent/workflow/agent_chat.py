@@ -24,12 +24,16 @@ from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ToolCallPart,
     ToolReturnPart,
+    UserPromptPart,
 )
 from pydantic_ai.usage import UsageLimits
 
 from workout_agent.agents.guardrails import page_result
-from workout_agent.agents.outputs import AgentOutput, ShowWorkoutDay
+from workout_agent.agents.outputs import AgentOutput, ShowLastSession, ShowWorkoutDay
 from workout_agent.agents.workout_agent import AgentDeps, jsonable
 from workout_agent.observability import TurnTrace
 from workout_agent.sessions.chat_store import load_history, save_turn, try_lock_chat, unlock_chat
@@ -37,8 +41,10 @@ from workout_agent.sessions.daily_checks import LATEST_RECORD, latest_record_tod
 from workout_agent.sessions.history import shrink_old_tool_results, tool_results_in
 from workout_agent.sessions.titles import chat_title
 from workout_agent.tools.find_exercise import Searcher
+from workout_agent.tools.get_last_session import get_last_session
 from workout_agent.tools.workout_day import planned_day
 from workout_agent.workflow.events import ChatEvent, Error, Final, ToolEnd, ToolStart, tool_label
+from workout_agent.workflow.option_pick import picked_exercise_id
 from workout_agent.workflow.replies import (
     UNVERIFIED_REPLY,
     RenderError,
@@ -51,6 +57,8 @@ logger = logging.getLogger(__name__)
 
 BUSY_REPLY = "This chat is busy answering another message. Please send yours again."
 MAX_TOOL_CALLS = 6  # docs/amendments.md §9
+GET_LAST_SESSION = "get_last_session_tool"
+PICKED_CALL = "picked_option"  # call id of the tool call code makes for a picked option
 
 
 def _tool_result(event: FunctionToolResultEvent) -> dict[str, Any]:
@@ -59,6 +67,23 @@ def _tool_result(event: FunctionToolResultEvent) -> dict[str, Any]:
     if isinstance(part, ToolReturnPart) and isinstance(part.content, dict):
         return part.content
     return {"status": "retry"}  # the model sent bad arguments and is asked to try again
+
+
+def _picked_messages(
+    text: str, args: dict[str, Any], session: dict[str, Any], output: AgentOutput
+) -> list[ModelMessage]:
+    """The turn as the model would have saved it, so later turns can see it: the user's
+    number, the get_last_session call and result, and the final choice with its return."""
+    final = f"final_result_{type(output).__name__}"
+    return [
+        ModelRequest(parts=[UserPromptPart(text)]),
+        ModelResponse(parts=[ToolCallPart(GET_LAST_SESSION, args, PICKED_CALL)]),
+        ModelRequest(parts=[ToolReturnPart(GET_LAST_SESSION, session, PICKED_CALL)]),
+        ModelResponse(parts=[ToolCallPart(final, output.model_dump(), f"{PICKED_CALL}_final")]),
+        ModelRequest(
+            parts=[ToolReturnPart(final, "Final result processed.", f"{PICKED_CALL}_final")]
+        ),
+    ]
 
 
 async def _run_agent(
@@ -155,45 +180,70 @@ async def stream_agent_message(
                         result=page_result(LATEST_RECORD, latest),
                         call_id=LATEST_RECORD,
                     )
-            # The run happens in its own task and hands events over through a queue: the
-            # agent's internals must start and finish in one task, and this generator may
-            # be closed early (the client went away), which then just cancels that task.
-            # The task runs in the turn's trace context, so its spans nest under the turn.
-            queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
-            task = asyncio.create_task(
-                _run_agent(agent, text, deps, history, queue), context=turn.context
-            )
-            try:
-                while (event := await queue.get()) is not None:
-                    yield event
-                result = await task  # raises if the run failed
-            except SafetyRefused as refused:
-                # The safety screen matched before any model call: the fixed refusal is the
-                # reply. The turn is saved without model messages, so the chat shows it but
-                # the model never sees the refused text.
-                if await _save(conn, chat_id, last_turn + 1, text, refused.reply, [], []):
-                    outcome, final_reply, verified = "refused", refused.reply, True
-                    yield Final(reply=refused.reply, verified=True, checked=0)
-                else:
-                    outcome = "busy"
-                    yield Error(message=BUSY_REPLY)
-                return
-            finally:
-                if not task.done():
-                    task.cancel()
-                    await asyncio.wait({task})  # it must stop using conn before we go on
+            picked = picked_exercise_id(history, text)
+            if picked is not None:
+                # A bare number answering the last AskWhich: code resolves it, no model call.
+                # The same tool runs and is recorded as if the model had called it.
+                args = {"exercise_id": picked}
+                yield ToolStart(
+                    tool=GET_LAST_SESSION,
+                    label=tool_label(GET_LAST_SESSION, args),
+                    args=args,
+                    call_id=PICKED_CALL,
+                )
+                session = jsonable(await get_last_session(conn, picked))
+                deps.evidence.append(session)
+                turn.tool_span(GET_LAST_SESSION, args, session)
+                yield ToolEnd(
+                    tool=GET_LAST_SESSION,
+                    status=session["status"],
+                    result=page_result(GET_LAST_SESSION, session),
+                    call_id=PICKED_CALL,
+                )
+                output: AgentOutput = ShowLastSession(exercise_id=picked)
+                new_messages = _picked_messages(text, args, session, output)
+            else:
+                # The run happens in its own task and hands events over through a queue: the
+                # agent's internals must start and finish in one task, and this generator may
+                # be closed early (the client went away), which then just cancels that task.
+                # The task runs in the turn's trace context, so its spans nest under the turn.
+                queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
+                task = asyncio.create_task(
+                    _run_agent(agent, text, deps, history, queue), context=turn.context
+                )
+                try:
+                    while (event := await queue.get()) is not None:
+                        yield event
+                    result = await task  # raises if the run failed
+                except SafetyRefused as refused:
+                    # The safety screen matched before any model call: the fixed refusal is the
+                    # reply. The turn is saved without model messages, so the chat shows it but
+                    # the model never sees the refused text.
+                    if await _save(conn, chat_id, last_turn + 1, text, refused.reply, [], []):
+                        outcome, final_reply, verified = "refused", refused.reply, True
+                        yield Final(reply=refused.reply, verified=True, checked=0)
+                    else:
+                        outcome = "busy"
+                        yield Error(message=BUSY_REPLY)
+                    return
+                finally:
+                    if not task.done():
+                        task.cancel()
+                        await asyncio.wait({task})  # it must stop using conn before we go on
+                output = result.output
+                new_messages = result.new_messages()
 
             # A chosen day: code fetches its exercises now. The long list never goes to the
             # model, but it is a tool result like any other: kept as evidence and checked.
-            if isinstance(result.output, ShowWorkoutDay):
-                day_args = {"day_id": result.output.day_id}
+            if isinstance(output, ShowWorkoutDay):
+                day_args = {"day_id": output.day_id}
                 yield ToolStart(
                     tool="planned_day",
                     label=tool_label("planned_day", day_args),
                     args=day_args,
                     call_id="planned_day",
                 )
-                planned = jsonable(await planned_day(conn, result.output.day_id))
+                planned = jsonable(await planned_day(conn, output.day_id))
                 deps.evidence.append(planned)
                 yield ToolEnd(
                     tool="planned_day",
@@ -206,7 +256,7 @@ async def stream_agent_message(
             # (The output validator already sent back any choice that cites what no tool
             # returned, so this failing means a bug; it is still never shown or saved.)
             try:
-                reply = render(result.output, deps.evidence)
+                reply = render(output, deps.evidence)
             except RenderError:
                 outcome = "render_error"
                 yield Error(message=UNVERIFIED_REPLY)
@@ -219,15 +269,14 @@ async def stream_agent_message(
                 yield Final(reply=UNVERIFIED_REPLY, verified=False, checked=len(seen))
                 return  # the request did not succeed, so nothing is saved
 
-            # new_messages() is only this turn; older turns are already saved.
-            new_messages = result.new_messages()
+            # new_messages is only this turn; older turns are already saved.
             if not await _save(
                 conn, chat_id, last_turn + 1, text, reply, new_messages, deps.evidence
             ):
                 outcome = "busy"
                 yield Error(message=BUSY_REPLY)
                 return
-            outcome, final_reply, verified = type(result.output).__name__, reply, True
+            outcome, final_reply, verified = type(output).__name__, reply, True
             yield Final(reply=reply, verified=True, checked=len(seen))
         finally:
             await unlock_chat(conn, chat_id)
