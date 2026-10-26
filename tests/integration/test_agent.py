@@ -22,6 +22,7 @@ from workout_agent.embeddings.index import index_exercises
 from workout_agent.embeddings.openrouter import embed
 from workout_agent.embeddings.search import search_exercises
 from workout_agent.settings import Settings
+from workout_agent.workflow.agent_chat import handle_agent_message
 from workout_agent.workflow.replies import render
 
 SEARCH_COLLECTION = "exercises_agent_test"
@@ -104,16 +105,19 @@ async def test_ambiguous_exercise_asks_which_one(conn):
 async def test_picking_a_number_chooses_that_option(conn):
     await _seed(conn)
     agent = agent_module.build_agent(Settings())
-    deps = agent_module.AgentDeps(conn=conn, evidence=[])
-    first = await agent.run("last time I did bench press?", deps=deps)
+    # Through the chat path: code, not the model, turns "2" into the second option. The
+    # seeded ids (2 and 8) are chosen so "2" would be the wrong answer if read as an id.
+    first = await handle_agent_message(conn, "pick", "last time I did bench press?", agent)
+    options = {
+        line.split(". ", 1)[0]: line.split(". ", 1)[1]
+        for line in first.splitlines()
+        if re.match(r"\d+\. ", line)
+    }
+    assert set(options) >= {"1", "2"}, f"options shown as a numbered list: {first!r}"
 
-    # The tool returned the options in this order; "2" must mean the second one.
-    second_name = deps.evidence[0]["matches"][1]["name"]
-    deps2 = agent_module.AgentDeps(conn=conn, evidence=[])
-    second = await agent.run("2", deps=deps2, message_history=first.all_messages())
+    second = await handle_agent_message(conn, "pick", "2", agent)
 
-    assert second_name in render(second.output, deps2.evidence)
-    assert "1." in render(first.output, deps.evidence)  # options shown as a numbered list
+    assert options["2"] in second
 
 
 async def _real_embedder(texts: list[str]) -> list[list[float]]:
