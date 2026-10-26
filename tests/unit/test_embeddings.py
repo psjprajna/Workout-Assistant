@@ -10,7 +10,7 @@ from workout_agent.settings import Settings
 
 
 def _settings():
-    return Settings(openrouter_api_key="sk-test", _env_file=None)
+    return Settings(openrouter_api_key="sk-test", _env_file=None)  # pyright: ignore[reportCallIssue]
 
 
 def _mock_response(vectors: list[list[float]]) -> dict:
@@ -74,7 +74,7 @@ async def test_non_200_response_raises(httpx_mock):
 
 
 async def test_missing_api_key_raises_without_a_request(httpx_mock):
-    settings = Settings(_env_file=None)
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     assert settings.openrouter_api_key is None
 
     with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):

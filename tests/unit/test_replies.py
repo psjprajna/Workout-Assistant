@@ -3,6 +3,7 @@ not in the data."""
 
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 import pytest
 
@@ -21,7 +22,7 @@ from workout_agent.workflow.replies import (
 )
 
 
-def make_result(name="Barbell Bench Press", sets=None, status="ok"):
+def make_result(name="Barbell Bench Press", sets=None, status: Literal["ok", "no_rows"] = "ok"):
     if sets is None:
         sets = [
             SetItem(1, Decimal("80.00"), 8),

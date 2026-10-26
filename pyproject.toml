@@ -30,6 +30,9 @@ packages = ["src/workout_agent"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--strict-markers"
+# A hung test (a real model call, a service that is down) fails after 60 s instead of stalling.
+timeout = 60
 markers = [
     "llm: tests that call a real language model (need an API key)",
     "search_eval: search quality gate on your real data and Qdrant index",
@@ -48,6 +51,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-httpx>=0.36.2",
+    "pytest-timeout>=2.4.0",
     "ruff>=0.16.10",
 ]
 # Offline evals only: the app never imports it (docs/amendments.md §24)

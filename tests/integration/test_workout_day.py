@@ -108,15 +108,18 @@ async def test_whats_my_workout_today(plan, checked_today):
                                                         AGENT)]
 
     assert [type(e) for e in events[:-1]] == [ToolStart, ToolEnd, ToolStart, ToolEnd]
-    day_id = events[0].args == {} and events[1].result["suggested_day_id"]
-    assert events[2] == ToolStart(
+    first_start, first_end, second_start, second_end = events[:4]
+    assert isinstance(first_start, ToolStart) and isinstance(first_end, ToolEnd)
+    assert isinstance(second_start, ToolStart) and isinstance(second_end, ToolEnd)
+    day_id = first_start.args == {} and first_end.result["suggested_day_id"]
+    assert second_start == ToolStart(
         tool="planned_day",
         label="Fetching that day's exercises…",
         args={"day_id": day_id},
         call_id="planned_day",
     )
-    assert events[3].result["day_name"] == "Legs A"
-    assert events[3].result["exercises"][0]["exercise_name"] == "Barbell Squat"
+    assert second_end.result["day_name"] == "Legs A"
+    assert second_end.result["exercises"][0]["exercise_name"] == "Barbell Squat"
     final = events[-1]
     assert isinstance(final, Final) and final.verified
     assert final.reply.startswith("Your next workout is probably Legs A:")

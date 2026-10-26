@@ -33,7 +33,7 @@ def spans(monkeypatch):
 
 def test_no_keys_means_tracing_off(monkeypatch):
     monkeypatch.setattr(observability, "_client", None)
-    assert setup_tracing(Settings(_env_file=None)) is False
+    assert setup_tracing(Settings(_env_file=None)) is False  # pyright: ignore[reportCallIssue]
     TurnTrace("chat-1", "hi").finish("help", "Hello", True)  # does nothing, raises nothing
 
 

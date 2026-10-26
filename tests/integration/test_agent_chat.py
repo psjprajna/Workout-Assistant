@@ -40,7 +40,7 @@ from workout_agent.workflow.agent_chat import (
     handle_agent_message,
     stream_agent_message,
 )
-from workout_agent.workflow.events import Error, Final, ToolStart, chat_event_adapter
+from workout_agent.workflow.events import Error, Final, ToolEnd, ToolStart, chat_event_adapter
 from workout_agent.workflow.replies import HELP_TEXT
 from workout_agent.workflow.safety import SAFETY_REPLY
 from workout_agent.workflow.simple_router import simple_route
@@ -188,6 +188,8 @@ async def test_stream_reports_each_tool_then_the_reply(conn, seeded, checked_tod
         events = [e async for e in stream_agent_message(conn, "t1", "bench?", AGENT)]
 
     find_start, find_end, last_start, last_end, final = events
+    assert isinstance(find_start, ToolStart) and isinstance(last_start, ToolStart)
+    assert isinstance(find_end, ToolEnd) and isinstance(last_end, ToolEnd)
     assert find_start == ToolStart(
         tool="find_exercise_tool",
         label="Searching your exercises for 'barbell bench press'…",
