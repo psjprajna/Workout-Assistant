@@ -44,9 +44,14 @@ HEARTBEAT_SECONDS = 5.0
 STREAM_FAILED = "Something went wrong while answering. Please try again."
 
 
+MAX_MESSAGE_CHARS = 2000  # a chat message is a sentence or two; more is abuse, not training
+MAX_CHAT_ID_CHARS = 200
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # a Jefit export is a few MB of CSV text
+
+
 class ChatRequest(BaseModel):
-    chat_id: str = Field(min_length=1)  # the chat page's thread id
-    message: str = Field(min_length=1)
+    chat_id: str = Field(min_length=1, max_length=MAX_CHAT_ID_CHARS)  # the page's thread id
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
 
 
 class ChatResponse(BaseModel):
@@ -127,8 +132,16 @@ def create_app(
     @app.post("/data/import")
     async def data_import(request: Request) -> dict[str, Any]:
         """Import the Jefit export sent as the request body (the file's text)."""
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
+            return asdict(ImportResult("rejected", "the file is too large"))
+        body = bytearray()
+        async for chunk in request.stream():  # cap while reading, not after
+            body += chunk
+            if len(body) > MAX_UPLOAD_BYTES:
+                return asdict(ImportResult("rejected", "the file is too large"))
         try:
-            text = (await request.body()).decode("utf-8-sig")
+            text = bytes(body).decode("utf-8-sig")
         except UnicodeDecodeError:
             return asdict(ImportResult("rejected", "the file is not text"))
         async with app.state.pool.acquire() as conn:
