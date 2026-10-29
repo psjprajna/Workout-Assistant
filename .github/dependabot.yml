@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Pinned together: harness 0.54.0 requires exactly slim 2.54.0 (docs/amendments.md §24).
+      # Moved by hand, in one change.
+      - dependency-name: pydantic-ai-slim
+      - dependency-name: pydantic-ai-harness
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]

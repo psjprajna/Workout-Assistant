@@ -4,9 +4,22 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Weekly, so a new advisory against the locked set shows up without a push.
+  schedule:
+    - cron: "0 6 * * 1"
+
+# A newer push to the same branch or PR supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   check:
+    # The weekly run only audits.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -28,12 +41,37 @@ jobs:
         ports:
           - 6333:6333
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.15"
           enable-cache: true
       - run: uv sync --locked --group eval
       - run: uv run ruff check
       - run: uv run pyright
       # No real model calls and no tests that need the user's own data (docs/amendments.md §9).
       - run: uv run pytest -m "not llm and not search_eval"
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.15"
+      # The locked set, exactly as installed; pip-audit checks it and resolves nothing itself.
+      - run: uv export --locked --all-groups --no-hashes --no-emit-project --quiet -o requirements-audit.txt
+      # Ignored, each re-checked when the weekly run or Dependabot moves the package (2026-10-29):
+      #   CVE-2026-114386  pydantic-ai-harness: fixed in 0.59.0, which needs slim 2.56 (pinned, §24)
+      #   PYSEC-2026-3046  ragas, eval group only, no fix released
+      #   PYSEC-2026-2447  diskcache, via ragas, eval group only, no fix released
+      - run: >-
+          uvx pip-audit --no-deps --disable-pip -r requirements-audit.txt
+          --ignore-vuln CVE-2026-114386
+          --ignore-vuln PYSEC-2026-3046
+          --ignore-vuln PYSEC-2026-2447
