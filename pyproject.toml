@@ -63,5 +63,5 @@ eval = [
 
 [tool.uv]
 # instructor (via ragas) caps jiter below what openai>=3.19 (pydantic-ai-slim 2.54.0) needs
-override-dependencies = ["jiter>=0.16"]
+override-dependencies = ["jiter>=0.16", "jinja2==3.1.2"]
 constraint-dependencies = ["websockets>=17.2"]
