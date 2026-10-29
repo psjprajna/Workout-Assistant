@@ -7,8 +7,10 @@ attacker. The point is that the code around it holds. No network, no real model.
 import asyncio
 from typing import Any
 
+import httpx
 import pytest
 from pydantic import SecretStr
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
@@ -21,11 +23,13 @@ from pydantic_ai_harness.guardrails import ToolBlocked
 
 from workout_agent.agents.guardrails import MAX_RESULT_CHARS
 from workout_agent.agents.workout_agent import build_agent
+from workout_agent.api.app import STREAM_FAILED, create_app
 from workout_agent.settings import Settings
 from workout_agent.tools.find_exercise import find_exercise
 from workout_agent.workflow.agent_chat import handle_agent_message
 from workout_agent.workflow.replies import HELP_TEXT
 from workout_agent.workflow.safety import SAFETY_REPLY
+from workout_agent.workflow.simple_router import simple_route
 
 pytestmark = pytest.mark.security
 
@@ -162,3 +166,41 @@ async def test_a_poisoned_chat_does_not_reach_another_chat(conn, seeded):
     with AGENT.override(model=FunctionModel(spy)):
         await handle_agent_message(conn, "other", "hello", AGENT)
     assert "IGNORE ALL RULES" not in repr(seen)
+
+
+# --- Availability: a model that runs past its token cap shows the user no internals ------
+
+
+def _over_the_token_cap(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+    raise UnexpectedModelBehavior("Model token limit (512) exceeded before any response")
+
+
+async def _post(client, path, chat_id="cap"):
+    return await client.post(path, json={"chat_id": chat_id, "message": "last plank?"})
+
+
+async def test_a_token_cap_abort_on_the_stream_shows_only_the_fixed_message(
+    seeded, test_database_url
+):
+    app = create_app(route=simple_route, database_url=test_database_url, agent=AGENT)
+    with AGENT.override(model=FunctionModel(_over_the_token_cap)):
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                body = (await _post(client, "/chat/stream")).text
+    assert STREAM_FAILED in body
+    assert "token limit" not in body and "UnexpectedModelBehavior" not in body
+
+
+async def test_a_token_cap_abort_on_plain_chat_is_a_bare_500_and_saves_nothing(
+    conn, seeded, test_database_url
+):
+    app = create_app(route=simple_route, database_url=test_database_url, agent=AGENT)
+    with AGENT.override(model=FunctionModel(_over_the_token_cap)):
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                r = await _post(client, "/chat")
+    assert r.status_code == 500
+    assert "token limit" not in r.text and "UnexpectedModelBehavior" not in r.text
+    assert await conn.fetchval("select count(*) from chats") == 0

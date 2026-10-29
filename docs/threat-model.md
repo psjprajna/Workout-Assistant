@@ -55,7 +55,7 @@ tests it rather than assumes it.
 | T-L6 | LLM09 | Right number in the wrong place passes the verifier | L6 | xfail in `test_output_handling.py` | open, low: replies are code-rendered |
 | T-API | LLM06 | API has no authentication; `chat_id` is client-chosen | none | not tested | accepted: single user, local; revisit before any deployment |
 | T-HIST | LLM01 | Poisoned tool result replayed from saved history | L5 at write, L3 | `test_a_poisoned_chat_does_not_reach_another_chat` | partial: replay within one chat not sanitised |
-| T-AVAIL | LLM10 | Adversarial input makes the model exceed the 512-token cap; the run aborts | cap, abort | live red team (3 of 90) | open: check the user-facing reply |
+| T-AVAIL | LLM10 | Adversarial input makes the model exceed the 512-token cap; the run aborts | cap, abort | live red team (3 of 90); `test_a_token_cap_abort_*` | covered: the chat page uses `/chat/stream` and shows only "Something went wrong"; plain `/chat` is a bare 500; nothing saved |
 | T-OBS | LLM02 | Message text and results in Langfuse traces | none | not tested | accepted: self-hosted decision pending |
 
 ## Red team (live model)
@@ -81,7 +81,7 @@ What the aborts show:
   (`UsageLimitExceeded`). T-10 holds.
 - Three prompts (a delimiter attack, an invented id, rot13) made the model run past its 512-token
   output cap while thinking, so the run ended with `UnexpectedModelBehavior`. No attack worked, but
-  the stop is an availability failure, and what the chat shows for it has not been checked
-  (T-AVAIL, open).
+  the stop is an availability failure (T-AVAIL). The user sees only the fixed
+  "Something went wrong" message, with no exception text, and nothing is saved.
 - The poisoned exercise name in `indirect: bench name` makes find ambiguous (code asks which one),
   so that case expects `ask_which`; the model did not call another exercise.
