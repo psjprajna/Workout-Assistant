@@ -75,3 +75,17 @@ jobs:
           --ignore-vuln CVE-2026-114386
           --ignore-vuln PYSEC-2026-3046
           --ignore-vuln PYSEC-2026-2447
+
+  token-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Passes only if the write is refused: contents: read must not allow creating a ref.
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api -X POST "repos/${{ github.repository }}/git/refs" \
+              -f ref=refs/heads/token-probe -f sha="${{ github.sha }}"; then
+            echo "write succeeded: GITHUB_TOKEN is too permissive"; exit 1
+          fi
+          echo "write denied, as expected"
