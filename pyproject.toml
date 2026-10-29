@@ -37,6 +37,7 @@ timeout = 60
 markers = [
     "llm: tests that call a real language model (need an API key)",
     "search_eval: search quality gate on your real data and Qdrant index",
+    "security: OWASP LLM Top 10 checks and adversarial cases; offline, no model call",
     "eval: agent eval gate on the synthetic cases; calls a real model, gated against a baseline",
 ]
 

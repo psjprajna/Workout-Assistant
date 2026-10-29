@@ -158,8 +158,9 @@ class Decision:
 
 
 def normalise(query: str) -> str:
-    """Lowercase, hyphens and apostrophes to spaces, expand gym shorthand."""
-    text = re.sub(r"[-'’]", " ", query.lower())
+    """Lowercase, hyphens, apostrophes and control characters to spaces, expand gym shorthand."""
+    # A NUL byte in the model's query made Postgres raise instead of the tool returning a value.
+    text = re.sub(r"[-'’\x00-\x1f\x7f]", " ", query.lower())
     return " ".join(ABBREVIATIONS.get(word, word) for word in text.split())
 
 
