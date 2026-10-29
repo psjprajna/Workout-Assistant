@@ -58,7 +58,19 @@ It also adds offline Ragas scores per case (`ragas_faithfulness`, `ragas_answer_
 uv run python scripts/eval_agent.py my-change
 ```
 
-uploads the cases in `src/workout_agent/evals/agent.py` as the dataset `agent-turns` and runs them as an experiment named `<date>-my-change`: one trace per case, scores per case (all checks, kind, trajectory, verified, tokens) and run scores for the `docs/amendments.md` §9 budgets (`budget_*`). Compare runs under Datasets -> agent-turns. The summary is also saved to `evals/results/`.
+uploads the cases in `src/workout_agent/evals/agent.py` as the dataset `agent-turns` and runs them as an experiment named `<date>-my-change`: one trace per case, scores per case (all checks, kind, trajectory, verified, tokens) and run scores for the `docs/amendments.md` §9 budgets (`budget_*`). Compare runs under Datasets -> agent-turns. The summary is also saved to `evals/results/`, with a `config` block (model, prompt hash, dataset hash, git sha) so runs can be compared knowing what changed.
+
+### Evals as tests
+
+The 30 cases above use ids from your own export, so CI can't run them. A second set, `src/workout_agent/evals/synthetic.py`, runs on a made-up history in the `workout_test` database (never your data) and is the CI gate:
+
+```sh
+uv run python scripts/eval_agent.py my-change --set synthetic   # one run, Langfuse dataset agent-turns-synthetic
+uv run pytest -m eval                                          # the gate: 3 runs per case, majority must pass
+uv run python scripts/eval_agent.py baseline --set synthetic --save-baseline   # accept a new baseline
+```
+
+`pytest -m eval` fails if a `docs/amendments.md` §9 budget breaks or a score drops below `evals/baselines/synthetic.json` (`workout_agent/evals/gate.py`). It skips on provider rate limits (HTTP 429). `--save-baseline` refuses a run with failing checks; commit the new baseline in the PR that causes it. `.github/workflows/evals.yml` runs the gate on pull requests that touch the agent, tools, workflow, evals or dependencies, and weekly (that run also gates latency), to catch model or provider drift. It needs the `OPENROUTER_API_KEY` repository secret.
 
 ## Updating your data from the chat
 

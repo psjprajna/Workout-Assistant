@@ -52,7 +52,7 @@ jobs:
       - run: uv run ruff check
       - run: uv run pyright
       # No real model calls and no tests that need the user's own data (docs/amendments.md §9).
-      - run: uv run pytest -m "not llm and not search_eval"
+      - run: uv run pytest -m "not llm and not search_eval and not eval"
 
   audit:
     runs-on: ubuntu-latest

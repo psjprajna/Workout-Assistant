@@ -68,3 +68,20 @@ def test_a_result_saved_before_these_fields_still_loads():
     )  # fmt: skip
     result = TurnResult(**old)
     assert (result.contexts, result.tool_calls, result.offered_ids) == ([], [], [])
+
+
+async def test_a_number_answered_in_code_counts_as_the_fetch(conn, seeded):
+    def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        returns = [p for p in messages[-1].parts if isinstance(p, ToolReturnPart)]
+        if not returns:
+            return call(FIND, query="bench press")
+        matches = cast(dict[str, Any], returns[0].content)["matches"]
+        return call("final_result_AskWhich", option_ids=[m["exercise_id"] for m in matches])
+
+    ask = Turn("last bench press?", "ask_which", [FIND])
+    pick = Turn("1", "show_last", [LAST], 2)
+    with AGENT.override(model=FunctionModel(model)):
+        _, picked = await run_case(conn, AGENT, "capture pick", [ask, pick])
+
+    assert (picked.kind, picked.tools, picked.fetched_ids) == ("show_last", [LAST], [2])
+    assert picked.errors == []

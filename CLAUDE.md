@@ -11,4 +11,4 @@ Rules that hold everywhere:
 - Budgets in `docs/amendments.md` §9 are requirements; measure in Langfuse before tuning.
 - Pinned versions: pydantic-ai-slim 2.54.0. Do not add a framework or a store that `docs/amendments.md` §24 does not list without recording the reason there.
 
-No application code exists yet. The next step is phase 1 of `docs/amendments.md` §27. Repository conventions are in `AGENTS.md`.
+Application code exists; see `README.md`. Evals are tests: `docs/amendments.md` §25 and `evals.yml`. Repository conventions are in `AGENTS.md`.

@@ -1,0 +1,21 @@
+{
+  "config": {
+    "model": "qwen/qwen3.5-35b-a3b",
+    "prompt_hash": "5fe10233abbe",
+    "dataset": "agent-turns-synthetic",
+    "dataset_hash": "8e900e21dfd8",
+    "pydantic_ai": "2.54.0",
+    "git_sha": "501783f"
+  },
+  "summary": {
+    "turns": 17,
+    "kind_accuracy": 1.0,
+    "trajectory_accuracy": 1.0,
+    "all_checks_pass": 1.0,
+    "verified": 1.0,
+    "p50_seconds": 2.06,
+    "max_seconds": 2.87,
+    "mean_tokens_per_turn": 1790.2941176470588,
+    "max_tokens_per_turn": 3862
+  }
+}

@@ -31,8 +31,8 @@ from pydantic_ai.messages import (
 from pydantic_core import to_jsonable_python
 
 from workout_agent.evals.judge import QUESTIONS, Verdict, judge_one
-from workout_agent.workflow.agent_chat import stream_agent_message
-from workout_agent.workflow.events import Error, Final
+from workout_agent.workflow.agent_chat import PICKED_CALL, stream_agent_message
+from workout_agent.workflow.events import Error, Final, ToolStart
 from workout_agent.workflow.safety import SAFETY_REPLY
 
 DATASET = "agent-turns"
@@ -131,23 +131,25 @@ class TurnResult:
     offered_ids: list[int] = field(default_factory=list)  # ids offered by an ambiguous find
 
 
-def item_id(case: str) -> str:
+def item_id(case: str, dataset: str = DATASET) -> str:
     """A dataset item id that stays the same across uploads (ids are project-wide)."""
-    return f"{DATASET}:{case.replace(' ', '-').replace(',', '')}"
+    return f"{dataset}:{case.replace(' ', '-').replace(',', '')}"
 
 
-def upload_cases(client: Langfuse) -> None:
-    """Create or update the dataset from CASES."""
+def upload_cases(
+    client: Langfuse, cases: dict[str, list[Turn]] | None = None, dataset: str = DATASET
+) -> None:
+    """Create or update the dataset from CASES (or another set of cases)."""
     try:
-        client.get_dataset(DATASET)
+        client.get_dataset(dataset)
     except Exception:  # not found: create it
         client.create_dataset(
-            name=DATASET, description="Agent conversations: outcome kind and tool trajectory."
+            name=dataset, description="Agent conversations: outcome kind and tool trajectory."
         )
-    for name, turns in CASES.items():
+    for name, turns in (CASES if cases is None else cases).items():
         client.create_dataset_item(
-            dataset_name=DATASET,
-            id=item_id(name),
+            dataset_name=dataset,
+            id=item_id(name, dataset),
             input={"case": name, "messages": [t.message for t in turns]},
             expected_output={"turns": [asdict(t) for t in turns]},
         )
@@ -220,10 +222,13 @@ async def run_case(
         since = datetime.now(UTC)
         start = time.perf_counter()
         statuses: list[str] = []
+        picked: dict[str, Any] | None = None  # a number answered in code, no model call
         reply, verified = "", False
         with capture_run_messages() as messages:
             try:
                 async for event in stream_agent_message(conn, chat_id, turn.message, agent):
+                    if isinstance(event, ToolStart) and event.call_id == PICKED_CALL:
+                        picked = event.args
                     if event.kind == "tool_end" and event.tool != "latest_record":
                         statuses.append(event.status)
                     elif isinstance(event, Final):
@@ -246,6 +251,9 @@ async def run_case(
         kind, output = _kind(tools, calls, statuses)
         if reply == SAFETY_REPLY:
             kind = "refuse"
+        if picked is not None:  # code made the get_last_session call; the agent never ran
+            kind, tools, fetched = "show_last", [LAST], [int(picked["exercise_id"])]
+            calls = []
         result = TurnResult(
             case=name,
             message=turn.message,
