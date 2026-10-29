@@ -10,7 +10,7 @@ Python 3.12 package `workout_agent` in `src/workout_agent/`:
 - `api/`: FastAPI app; `ui/`: Chainlit chat page
 - `evals/`: offline evals (Langfuse experiments, reply judge, Ragas scores)
 
-Outside the package: `tests/` (`unit/`, `integration/`, `failure/`, `concurrency/`, `fixtures/`; the last two are empty so far), `scripts/` (runnable entry points), `migrations/` (numbered SQL), `config/`, `evals/` (cases, labels, saved results), `data/` (your Jefit export, private), `docs/` (requirements, `amendments.md`, design notes).
+Outside the package: `tests/` (`unit/`, `integration/`, `failure/`, `concurrency/`, `fixtures/`; the last two are empty so far), `scripts/` (runnable entry points), `migrations/` (numbered SQL), `config/`, `evals/` (labels, saved results, `baselines/`), `data/` (your Jefit export, private), `docs/` (requirements, `amendments.md`, design notes).
 
 ## Build, Test, and Development Commands
 
@@ -18,7 +18,7 @@ Run everything from the repository root with `uv`:
 
 - `uv sync --group dev` installs the app and test tools; add `--group eval` for the Ragas scorer.
 - `docker compose up -d` starts Postgres (port 5433), Qdrant and Langfuse. Integration tests need Postgres and Qdrant. `scripts/ensure_docker.sh` opens Docker if it is down and starts just those two; the integration tests run it themselves when Postgres isn't answering.
-- `uv run pytest tests/unit` needs nothing running; `uv run pytest tests/integration -m "not llm and not search_eval"` skips the tests that call a real model or need your search index.
+- `uv run pytest tests/unit` needs nothing running; `uv run pytest tests/integration -m "not llm and not search_eval and not eval"` skips the tests that call a real model or need your search index.
 - `uv run ruff check .` lints; `uv run pyright` type checks.
 - Run the app and the evals as the `README.md` describes.
 
@@ -28,7 +28,7 @@ Ruff sets the style (line length 100; rules E, F, I, B, UP). Use descriptive nam
 
 ## Testing Guidelines
 
-Tests use pytest with `asyncio_mode = "auto"`; markers `llm` (calls a real model) and `search_eval` (needs your real index). Add focused, runnable tests for new behavior and bug fixes, named after the behavior they verify, including invalid input and failure cases.
+Tests use pytest with `asyncio_mode = "auto"`; markers `llm` (calls a real model), `search_eval` (needs your real index) and `eval` (the agent eval gate, `tests/integration/test_agent_eval.py`: synthetic cases, real model, held to `evals/baselines/synthetic.json`; CI's `evals.yml` runs it). Add focused, runnable tests for new behavior and bug fixes, named after the behavior they verify, including invalid input and failure cases.
 
 ## Commit & Pull Request Guidelines
 
