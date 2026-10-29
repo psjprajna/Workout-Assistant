@@ -10,9 +10,10 @@ dependencies = [
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
     "langfuse>=5.0.2",
-    # Exact pin: harness 0.54.0 requires exactly pydantic-ai-slim 2.54.0 (docs/amendments.md §24)
+    # Exact pins: harness 0.54.0 requires exactly pydantic-ai-slim 2.54.0; later harness
+    # versions need slim 2.56 (docs/amendments.md §24)
     "pydantic-ai-harness==0.54.0",
-    "pydantic-ai-slim[openrouter,typesafe]>=2.54.0",
+    "pydantic-ai-slim[openrouter,typesafe]==2.54.0",
     "pydantic-settings>=2.15.0",
     "qdrant-client>=1.19.1",
     # traceloop-sdk (via chainlit -> literalai) imports requests without declaring it
