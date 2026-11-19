@@ -58,7 +58,7 @@ dev = [
 ]
 # Offline evals only: the app never imports it (docs/amendments.md §24)
 eval = [
-    "ragas==0.4.3",
+    "ragas==0.4.4",
     "pillow>=10.4.0",
 ]
 
